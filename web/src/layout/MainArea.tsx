@@ -1,10 +1,8 @@
 import { Flex } from 'antd'
 import { useLayoutStore } from '../store/layout'
-import FileTree from '../components/FileTree'
 import GraphView from '../components/GraphView'
 import WhiteboardView from '../components/WhiteboardView'
 import MainContent from './MainContent'
-import MainNav from './MainNav'
 import TerminalPanel from './TerminalPanel'
 
 export default function MainArea() {
@@ -15,21 +13,7 @@ export default function MainArea() {
     <>
       {mainView === 'files' && (
         <Flex vertical style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-          <MainNav />
-          <Flex style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-            <div
-              style={{
-                width: 220,
-                minWidth: 180,
-                borderRight: '1px solid #f0f0f0',
-                overflow: 'auto',
-                background: '#fafafa',
-              }}
-            >
-              <FileTree />
-            </div>
-            <MainContent />
-          </Flex>
+          <MainContent />
         </Flex>
       )}
       {mainView === 'whiteboard' && (
@@ -51,7 +35,7 @@ export default function MainArea() {
         {mainContent}
       </div>
       {terminalVisible && (
-        <div style={{ height: '33%', minHeight: 120, borderTop: '1px solid #f0f0f0' }}>
+        <div style={{ height: '33%', minHeight: 120, borderTop: '1px solid var(--ide-sidebar-border)' }}>
           <TerminalPanel />
         </div>
       )}

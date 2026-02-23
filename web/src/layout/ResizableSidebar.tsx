@@ -1,10 +1,28 @@
-import { ApartmentOutlined, CodeOutlined, FileTextOutlined, FormOutlined } from '@ant-design/icons'
-import { Layout, Tooltip } from 'antd'
+import {
+  ApartmentOutlined,
+  CodeOutlined,
+  DownloadOutlined,
+  FileAddOutlined,
+  FileTextOutlined,
+  FolderAddOutlined,
+  FormOutlined,
+  ReloadOutlined,
+  SortAscendingOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
+import { Dropdown, Layout, Tooltip } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { useLayoutStore } from '../store/layout'
+import FileTree from '../components/FileTree'
+import { useFileTreeStore } from '../store/fileTree'
 
-const SIDEBAR_MIN = 56
-const SIDEBAR_MAX = 280
+const SIDEBAR_MIN = 200
+const SIDEBAR_MAX = 400
+const SIDEBAR_DEFAULT = 260
+
+function generateId(): string {
+  return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+}
 
 type ResizableSidebarProps = {
   width: number
@@ -15,6 +33,10 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const [dragging, setDragging] = useState(false)
   const startX = useRef(0)
   const startW = useRef(0)
+  const mainView = useLayoutStore((s) => s.mainView)
+  const addNode = useFileTreeStore((s) => s.addNode)
+  const setSortBy = useFileTreeStore((s) => s.setSortBy)
+  const sortBy = useFileTreeStore((s) => s.sortBy)
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -39,6 +61,102 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
     }
   }, [dragging, onWidthChange])
 
+  const handleNewFile = () => {
+    addNode({
+      id: generateId(),
+      name: '未命名.md',
+      type: 'file',
+      parentId: null,
+      content: '',
+    })
+  }
+
+  const handleNewFolder = () => {
+    addNode({
+      id: generateId(),
+      name: '新文件夹',
+      type: 'folder',
+      parentId: null,
+    })
+  }
+
+  const sortMenuItems = [
+    { key: 'name', label: '按名称' },
+    { key: 'updated', label: '按修改时间' },
+  ]
+
+  const setMainView = useLayoutStore((s) => s.setMainView)
+  const setTopNav = useLayoutStore((s) => s.setTopNav)
+  const toggleTerminal = useLayoutStore((s) => s.toggleTerminal)
+
+  const switchView = (view: 'files' | 'whiteboard' | 'graph') => {
+    setMainView(view)
+    setTopNav(view === 'files' ? '文件' : view === 'whiteboard' ? '每日记录' : '项目规划')
+  }
+
+  if (mainView !== 'files') {
+    return (
+      <>
+        <Layout.Sider
+          width={56}
+          style={{
+            minWidth: 56,
+            maxWidth: 56,
+            background: 'var(--ide-sidebar)',
+            borderRight: '1px solid var(--ide-sidebar-border)',
+            flex: '0 0 56px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            paddingTop: 12,
+            gap: 4,
+          }}
+        >
+          <Tooltip title="文件" placement="right">
+            <span
+              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
+              onClick={() => switchView('files')}
+              role="button"
+              tabIndex={0}
+            >
+              <FileTextOutlined style={{ fontSize: 18 }} />
+            </span>
+          </Tooltip>
+          <Tooltip title="每日记录（白板）" placement="right">
+            <span
+              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
+              onClick={() => switchView('whiteboard')}
+              role="button"
+              tabIndex={0}
+            >
+              <FormOutlined style={{ fontSize: 18 }} />
+            </span>
+          </Tooltip>
+          <Tooltip title="项目规划（图谱）" placement="right">
+            <span
+              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
+              onClick={() => switchView('graph')}
+              role="button"
+              tabIndex={0}
+            >
+              <ApartmentOutlined style={{ fontSize: 18 }} />
+            </span>
+          </Tooltip>
+          <Tooltip title="终端" placement="right">
+            <span
+              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
+              onClick={toggleTerminal}
+              role="button"
+              tabIndex={0}
+            >
+              <CodeOutlined style={{ fontSize: 18 }} />
+            </span>
+          </Tooltip>
+        </Layout.Sider>
+      </>
+    )
+  }
+
   return (
     <>
       <Layout.Sider
@@ -46,52 +164,75 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
         style={{
           minWidth: width,
           maxWidth: width,
-          background: '#fafafa',
-          borderRight: '1px solid #f0f0f0',
+          background: 'var(--ide-sidebar)',
+          borderRight: '1px solid var(--ide-sidebar-border)',
           flex: `0 0 ${width}px`,
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 16, gap: 8 }}>
-          <Tooltip title="文件" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8 }}
-              role="button"
-              tabIndex={0}
-              onClick={() => useLayoutStore.getState().setMainView('files')}
+        <div
+          style={{
+            padding: '8px 10px',
+            borderBottom: '1px solid var(--ide-sidebar-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ide-text)' }}>文件</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Tooltip title="新建文件">
+              <span
+                style={{ cursor: 'pointer', padding: 4, color: 'var(--ide-text-muted)' }}
+                onClick={handleNewFile}
+                role="button"
+                tabIndex={0}
+              >
+                <FileAddOutlined style={{ fontSize: 14 }} />
+              </span>
+            </Tooltip>
+            <Tooltip title="新建文件夹">
+              <span
+                style={{ cursor: 'pointer', padding: 4, color: 'var(--ide-text-muted)' }}
+                onClick={handleNewFolder}
+                role="button"
+                tabIndex={0}
+              >
+                <FolderAddOutlined style={{ fontSize: 14 }} />
+              </span>
+            </Tooltip>
+            <Tooltip title="上传">
+              <span style={{ cursor: 'pointer', padding: 4, color: 'var(--ide-text-muted)' }}>
+                <UploadOutlined style={{ fontSize: 14 }} />
+              </span>
+            </Tooltip>
+            <Tooltip title="下载">
+              <span style={{ cursor: 'pointer', padding: 4, color: 'var(--ide-text-muted)' }}>
+                <DownloadOutlined style={{ fontSize: 14 }} />
+              </span>
+            </Tooltip>
+            <Dropdown
+              menu={{
+                items: sortMenuItems,
+                selectedKeys: [sortBy],
+                onClick: ({ key }) => setSortBy(key as 'name' | 'updated'),
+              }}
+              trigger={['click']}
             >
-              <FileTextOutlined style={{ fontSize: 20 }} />
-            </span>
-          </Tooltip>
-          <Tooltip title="白板" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8 }}
-              role="button"
-              tabIndex={0}
-              onClick={() => useLayoutStore.getState().setMainView('whiteboard')}
-            >
-              <FormOutlined style={{ fontSize: 20 }} />
-            </span>
-          </Tooltip>
-          <Tooltip title="知识图谱" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8 }}
-              role="button"
-              tabIndex={0}
-              onClick={() => useLayoutStore.getState().setMainView('graph')}
-            >
-              <ApartmentOutlined style={{ fontSize: 20 }} />
-            </span>
-          </Tooltip>
-          <Tooltip title="终端 CLI" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8 }}
-              role="button"
-              tabIndex={0}
-              onClick={() => useLayoutStore.getState().toggleTerminal()}
-            >
-              <CodeOutlined style={{ fontSize: 20 }} />
-            </span>
-          </Tooltip>
+              <span style={{ cursor: 'pointer', padding: 4, color: 'var(--ide-text-muted)' }}>
+                <SortAscendingOutlined style={{ fontSize: 14 }} />
+              </span>
+            </Dropdown>
+            <Tooltip title="刷新">
+              <span style={{ cursor: 'pointer', padding: 4, color: 'var(--ide-text-muted)' }}>
+                <ReloadOutlined style={{ fontSize: 14 }} />
+              </span>
+            </Tooltip>
+          </div>
+        </div>
+        <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+          <FileTree />
         </div>
       </Layout.Sider>
       <div
@@ -100,10 +241,12 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
         style={{
           width: 4,
           cursor: 'col-resize',
-          background: dragging ? '#1890ff' : 'transparent',
+          background: dragging ? 'var(--ide-accent)' : 'transparent',
           flexShrink: 0,
         }}
       />
     </>
   )
 }
+
+export { SIDEBAR_MIN, SIDEBAR_MAX, SIDEBAR_DEFAULT }

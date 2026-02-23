@@ -3,12 +3,12 @@ import { useState } from 'react'
 import AIPanel from './AIPanel'
 import HeaderBar from './HeaderBar'
 import MainArea from './MainArea'
-import ResizableSidebar from './ResizableSidebar'
+import ResizableSidebar, { SIDEBAR_DEFAULT } from './ResizableSidebar'
 
 const { Content } = Layout
 
 export default function AppLayout() {
-  const [sidebarWidth, setSidebarWidth] = useState(56)
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT)
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
 
   return (

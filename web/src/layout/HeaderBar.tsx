@@ -94,8 +94,24 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
         borderBottomRightRadius: 12,
       }}
     >
-      {/* 左侧：文件夹、搜索、书签 */}
-      <Space size="middle" style={{ flex: 1, minWidth: 0, justifyContent: 'flex-start' }}>
+      {/* 左侧：Logo（左对齐）+ 文件夹、搜索、书签 */}
+      <Space size="middle" style={{ minWidth: 0 }}>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            color: '#fff',
+            cursor: 'default',
+          }}
+          aria-hidden
+        >
+          <BookOutlined style={{ fontSize: 20 }} />
+        </span>
         <Tooltip title="所有文章">
           <span
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -144,36 +160,8 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
         </Dropdown>
       </Space>
 
-      {/* 中间：Logo（打开的书，不可点击，居中） */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minWidth: 0,
-        }}
-      >
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            color: '#fff',
-            cursor: 'default',
-          }}
-          aria-hidden
-        >
-          <BookOutlined style={{ fontSize: 20 }} />
-        </span>
-      </div>
-
       {/* 右侧：AI、状态、用户 */}
-      <Space size="middle" style={{ flex: 1, minWidth: 0, justifyContent: 'flex-end' }}>
+      <Space size="middle" style={{ marginLeft: 'auto' }}>
         <Tooltip title={aiOpen ? '关闭 AI 助手' : 'AI 助手'}>
           <span
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}

@@ -39,9 +39,10 @@ export default function LeftIconSidebar() {
     >
       <Tooltip title="白板" placement="right">
         <span
+          className="left-sidebar-icon"
           style={{
             ...iconBox,
-            background: mainView === 'whiteboard' ? 'var(--ide-accent)' : 'transparent',
+            background: mainView === 'whiteboard' ? 'var(--ide-tab-active-bg)' : 'transparent',
             color: mainView === 'whiteboard' ? '#fff' : 'var(--ide-text-muted)',
           }}
           onClick={() => setMainView('whiteboard')}
@@ -54,9 +55,10 @@ export default function LeftIconSidebar() {
       </Tooltip>
       <Tooltip title="关系图谱" placement="right">
         <span
+          className="left-sidebar-icon"
           style={{
             ...iconBox,
-            background: mainView === 'graph' ? 'var(--ide-accent)' : 'transparent',
+            background: mainView === 'graph' ? 'var(--ide-tab-active-bg)' : 'transparent',
             color: mainView === 'graph' ? '#fff' : 'var(--ide-text-muted)',
           }}
           onClick={() => setMainView('graph')}
@@ -69,9 +71,10 @@ export default function LeftIconSidebar() {
       </Tooltip>
       <Tooltip title="终端 CLI" placement="right">
         <span
+          className="left-sidebar-icon"
           style={{
             ...iconBox,
-            background: terminalVisible ? 'var(--ide-accent)' : 'transparent',
+            background: terminalVisible ? 'var(--ide-tab-active-bg)' : 'transparent',
             color: terminalVisible ? '#fff' : 'var(--ide-text-muted)',
           }}
           onClick={toggleTerminal}

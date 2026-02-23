@@ -1,18 +1,13 @@
 import {
-  ApartmentOutlined,
-  CodeOutlined,
   DownloadOutlined,
   FileAddOutlined,
-  FileTextOutlined,
   FolderAddOutlined,
-  FormOutlined,
   ReloadOutlined,
   SortAscendingOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
 import { Dropdown, Layout, Tooltip } from 'antd'
 import { useEffect, useRef, useState } from 'react'
-import { useLayoutStore } from '../store/layout'
 import FileTree from '../components/FileTree'
 import { useFileTreeStore } from '../store/fileTree'
 
@@ -33,7 +28,6 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const [dragging, setDragging] = useState(false)
   const startX = useRef(0)
   const startW = useRef(0)
-  const mainView = useLayoutStore((s) => s.mainView)
   const addNode = useFileTreeStore((s) => s.addNode)
   const setSortBy = useFileTreeStore((s) => s.setSortBy)
   const sortBy = useFileTreeStore((s) => s.sortBy)
@@ -84,78 +78,6 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
     { key: 'name', label: '按名称' },
     { key: 'updated', label: '按修改时间' },
   ]
-
-  const setMainView = useLayoutStore((s) => s.setMainView)
-  const setTopNav = useLayoutStore((s) => s.setTopNav)
-  const toggleTerminal = useLayoutStore((s) => s.toggleTerminal)
-
-  const switchView = (view: 'files' | 'whiteboard' | 'graph') => {
-    setMainView(view)
-    setTopNav(view === 'files' ? '文件' : view === 'whiteboard' ? '每日记录' : '项目规划')
-  }
-
-  if (mainView !== 'files') {
-    return (
-      <>
-        <Layout.Sider
-          width={56}
-          style={{
-            minWidth: 56,
-            maxWidth: 56,
-            background: 'var(--ide-sidebar)',
-            borderRight: '1px solid var(--ide-sidebar-border)',
-            flex: '0 0 56px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            paddingTop: 12,
-            gap: 4,
-          }}
-        >
-          <Tooltip title="文件" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
-              onClick={() => switchView('files')}
-              role="button"
-              tabIndex={0}
-            >
-              <FileTextOutlined style={{ fontSize: 18 }} />
-            </span>
-          </Tooltip>
-          <Tooltip title="每日记录（白板）" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
-              onClick={() => switchView('whiteboard')}
-              role="button"
-              tabIndex={0}
-            >
-              <FormOutlined style={{ fontSize: 18 }} />
-            </span>
-          </Tooltip>
-          <Tooltip title="项目规划（图谱）" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
-              onClick={() => switchView('graph')}
-              role="button"
-              tabIndex={0}
-            >
-              <ApartmentOutlined style={{ fontSize: 18 }} />
-            </span>
-          </Tooltip>
-          <Tooltip title="终端" placement="right">
-            <span
-              style={{ cursor: 'pointer', padding: 8, color: 'var(--ide-text-muted)' }}
-              onClick={toggleTerminal}
-              role="button"
-              tabIndex={0}
-            >
-              <CodeOutlined style={{ fontSize: 18 }} />
-            </span>
-          </Tooltip>
-        </Layout.Sider>
-      </>
-    )
-  }
 
   return (
     <>

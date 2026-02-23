@@ -2,6 +2,7 @@ import { Layout } from 'antd'
 import { useState } from 'react'
 import AIPanel from './AIPanel'
 import HeaderBar from './HeaderBar'
+import LeftIconSidebar from './LeftIconSidebar'
 import MainArea from './MainArea'
 import ResizableSidebar, { SIDEBAR_DEFAULT } from './ResizableSidebar'
 
@@ -15,6 +16,7 @@ export default function AppLayout() {
     <>
       <HeaderBar onToggleAI={() => setAiPanelOpen((o) => !o)} aiOpen={aiPanelOpen} />
       <Layout style={{ flexDirection: 'row', height: 'calc(100vh - 48px)' }}>
+        <LeftIconSidebar />
         <ResizableSidebar width={sidebarWidth} onWidthChange={setSidebarWidth} />
         <Content style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <MainArea />

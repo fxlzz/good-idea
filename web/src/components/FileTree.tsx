@@ -80,6 +80,7 @@ export default function FileTree() {
   return (
     <>
     <Tree
+      className="ide-tree"
       showIcon
       blockNode
       expandedKeys={expandedKeys}
@@ -87,7 +88,7 @@ export default function FileTree() {
       treeData={treeData}
       onSelect={onSelect}
       onRightClick={onRightClick}
-      style={{ padding: '8px 0' }}
+      style={{ padding: '8px 0', background: 'transparent' }}
     />
     {contextNodeId && (
       <div
@@ -95,17 +96,17 @@ export default function FileTree() {
           position: 'fixed',
           left: contextPos.x,
           top: contextPos.y,
-          background: '#fff',
-          border: '1px solid #f0f0f0',
+          background: 'var(--ide-panel)',
+          border: '1px solid var(--ide-sidebar-border)',
           borderRadius: 4,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
           zIndex: 1000,
           padding: '4px 0',
           minWidth: 120,
         }}
       >
         <div
-          style={{ padding: '8px 12px', cursor: 'pointer' }}
+          style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--ide-text)' }}
           onClick={handleBookmarkClick}
           role="button"
           tabIndex={0}

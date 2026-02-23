@@ -1,3 +1,19 @@
+:root {
+  --ide-bg: #1a1d23;
+  --ide-header: #16181d;
+  --ide-sidebar: #1e2128;
+  --ide-sidebar-border: #2c3038;
+  --ide-panel: #252931;
+  --ide-tab-bg: #252931;
+  --ide-tab-active: #722ed1;
+  --ide-tab-active-bg: rgba(114, 46, 209, 0.12);
+  --ide-text: #e4e6eb;
+  --ide-text-muted: #8b8f99;
+  --ide-accent: #722ed1;
+  --ide-hover: rgba(255, 255, 255, 0.06);
+  --ide-tree-selected: rgba(114, 46, 209, 0.25);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -7,8 +23,39 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--ide-bg);
+  color: var(--ide-text);
 }
 
 #root {
   height: 100vh;
+}
+
+.markdown-body {
+  color: var(--ide-text);
+}
+.markdown-body pre,
+.markdown-body code {
+  background: var(--ide-panel);
+}
+
+/* File tree dark */
+.ide-tree.ant-tree {
+  background: transparent !important;
+  color: var(--ide-text);
+}
+.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+  background: var(--ide-tree-selected) !important;
+}
+.ide-tree .ant-tree-node-content-wrapper:hover {
+  background: var(--ide-hover) !important;
+}
+.ide-tree .ant-tree-title {
+  color: var(--ide-text);
+}
+.ide-tree .ant-tree-switcher {
+  color: var(--ide-text-muted);
+}
+.ide-tree .ant-tree-iconEle {
+  color: var(--ide-text-muted);
 }

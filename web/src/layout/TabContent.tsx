@@ -1,4 +1,5 @@
 import { useFileTreeStore } from '../store/fileTree'
+import { useLayoutStore } from '../store/layout'
 import DocxViewer from '../components/viewers/DocxViewer'
 import MdViewer from '../components/viewers/MdViewer'
 import PdfViewer from '../components/viewers/PdfViewer'
@@ -9,6 +10,7 @@ type TabContentProps = { nodeId: string }
 export default function TabContent({ nodeId }: TabContentProps) {
   const node = useFileTreeStore((s) => s.getNode(nodeId))
   const updateNode = useFileTreeStore((s) => s.updateNode)
+  const docViewMode = useLayoutStore((s) => s.docViewMode)
 
   if (!node || node.type !== 'file') return <div style={{ padding: 24 }}>文件不存在</div>
 
@@ -22,7 +24,7 @@ export default function TabContent({ nodeId }: TabContentProps) {
   if (ext === '.md') {
     return (
       <div style={{ height: '100%', overflow: 'hidden' }}>
-        <MdViewer content={content} onChange={handleMdChange} />
+        <MdViewer content={content} onChange={handleMdChange} viewMode={docViewMode} />
       </div>
     )
   }

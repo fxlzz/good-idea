@@ -2,7 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Input } from 'antd'
-import { useState } from 'react'
+import type { DocViewMode } from '../../store/layout'
 import 'highlight.js/styles/github.css'
 
 const { TextArea } = Input
@@ -11,14 +11,22 @@ type MdViewerProps = {
   content: string
   onChange: (content: string) => void
   readOnly?: boolean
+  viewMode?: DocViewMode
 }
 
-export default function MdViewer({ content, onChange, readOnly }: MdViewerProps) {
-  const [edit, setEdit] = useState(true)
+const editorPreviewStyle: React.CSSProperties = {
+  flex: 1,
+  padding: 16,
+  overflow: 'auto',
+  minWidth: 0,
+  background: 'var(--ide-bg)',
+  color: 'var(--ide-text)',
+}
 
+export default function MdViewer({ content, onChange, readOnly, viewMode = 'split' }: MdViewerProps) {
   if (readOnly) {
     return (
-      <div className="markdown-body" style={{ padding: 24 }}>
+      <div className="markdown-body" style={{ padding: 24, background: 'var(--ide-bg)', color: 'var(--ide-text)' }}>
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
           {content}
         </ReactMarkdown>
@@ -26,40 +34,37 @@ export default function MdViewer({ content, onChange, readOnly }: MdViewerProps)
     )
   }
 
+  const showEditor = viewMode === 'edit' || viewMode === 'split'
+  const showPreview = viewMode === 'preview' || viewMode === 'split'
+
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      <div style={{ flex: 1, padding: 16, borderRight: '1px solid #f0f0f0' }}>
-        <div style={{ marginBottom: 8 }}>
-          <span
-            style={{ cursor: 'pointer', marginRight: 16, fontWeight: edit ? 600 : 400 }}
-            onClick={() => setEdit(true)}
-            role="tab"
-          >
-            编辑
-          </span>
-          <span
-            style={{ cursor: 'pointer', fontWeight: edit ? 400 : 600 }}
-            onClick={() => setEdit(false)}
-            role="tab"
-          >
-            预览
-          </span>
-        </div>
-        {edit ? (
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--ide-bg)' }}>
+      {showEditor && (
+        <div style={{ ...editorPreviewStyle, borderRight: showPreview ? '1px solid var(--ide-sidebar-border)' : undefined }}>
           <TextArea
             value={content}
             onChange={(e) => onChange(e.target.value)}
             placeholder="# 写点什么..."
-            style={{ height: 'calc(100% - 40px)', resize: 'none' }}
+            style={{
+              height: '100%',
+              resize: 'none',
+              background: 'var(--ide-panel)',
+              color: 'var(--ide-text)',
+              border: 'none',
+            }}
+            styles={{
+              textarea: { background: 'var(--ide-panel)', color: 'var(--ide-text)' },
+            }}
           />
-        ) : (
-          <div style={{ height: 'calc(100% - 40px)', overflow: 'auto' }} className="markdown-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-              {content}
-            </ReactMarkdown>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+      {showPreview && (
+        <div style={editorPreviewStyle} className="markdown-body">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+            {content}
+          </ReactMarkdown>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,23 +1,21 @@
 import {
-  BellOutlined,
   BookOutlined,
-  CameraOutlined,
-  PlusOutlined,
+  DownOutlined,
+  FolderOutlined,
   RobotOutlined,
   SearchOutlined,
-  UserOutlined,
+  StarOutlined,
 } from '@ant-design/icons'
 import { Avatar, Badge, Dropdown, Layout, Space, Tooltip } from 'antd'
 import { useEffect, useState } from 'react'
 import type { MenuProps } from 'antd'
 import HeaderModal from './HeaderModal'
-import { useLayoutStore } from '../store/layout'
 
 const { Header } = Layout
 
 const HEALTH_POLL_INTERVAL = 10_000
 
-const TOP_NAVS = ['文件', '每日记录', '项目规划'] as const
+const USER_NAME = 'admin'
 
 type HeaderBarProps = {
   onToggleAI: () => void
@@ -27,9 +25,6 @@ type HeaderBarProps = {
 export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null)
-  const topNav = useLayoutStore((s) => s.topNav)
-  const setTopNav = useLayoutStore((s) => s.setTopNav)
-  const setMainView = useLayoutStore((s) => s.setMainView)
 
   useEffect(() => {
     const check = async () => {
@@ -45,6 +40,8 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
     return () => clearInterval(id)
   }, [])
 
+  const firstLetter = USER_NAME.charAt(0).toUpperCase()
+
   const userMenuItems: MenuProps['items'] = [
     { key: 'settings', label: '设置' },
     { key: 'ai', label: aiOpen ? '关闭 AI 助手' : 'AI 助手', onClick: onToggleAI },
@@ -53,23 +50,36 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
     { key: 'logout', label: '登出' },
   ]
 
+  const iconStyle = { fontSize: 18, color: 'var(--ide-text-muted)' }
+
   return (
     <Header
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 12px 0 8px',
+        padding: '0 16px',
         background: 'var(--ide-header)',
         color: 'var(--ide-text)',
         height: 48,
         borderBottom: '1px solid var(--ide-sidebar-border)',
       }}
     >
+      {/* 左侧：Logo（书）+ 文件夹、搜索、书签 */}
       <Space size="middle" style={{ flex: 1, minWidth: 0 }}>
-        <Tooltip title="菜单">
+        <Tooltip title="好想法">
           <span
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--ide-accent)' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              color: '#fff',
+              cursor: 'pointer',
+            }}
             onClick={() => setModalOpen(true)}
             role="button"
             tabIndex={0}
@@ -78,101 +88,66 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
             <BookOutlined style={{ fontSize: 20 }} />
           </span>
         </Tooltip>
-        <Tooltip title="搜索">
-          <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--ide-text-muted)' }}>
-            <SearchOutlined style={{ fontSize: 16 }} />
+        <Tooltip title="文件">
+          <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} role="button" tabIndex={0}>
+            <FolderOutlined style={iconStyle} />
           </span>
         </Tooltip>
-        <Badge count={2} size="small" offset={[-2, 2]}>
-          <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--ide-text-muted)' }}>
-            <BellOutlined style={{ fontSize: 16 }} />
+        <Tooltip title="搜索">
+          <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} role="button" tabIndex={0}>
+            <SearchOutlined style={iconStyle} />
           </span>
-        </Badge>
-        <Space size={4} style={{ marginLeft: 8 }}>
-          {TOP_NAVS.map((nav) => {
-            const mainViewForNav = nav === '文件' ? 'files' : nav === '每日记录' ? 'whiteboard' : 'graph'
-            const isActive = topNav === nav
-            return (
-              <span
-                key={nav}
-                onClick={() => {
-                  setTopNav(nav)
-                  setMainView(mainViewForNav)
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && (setTopNav(nav), setMainView(mainViewForNav))}
-                style={{
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  color: isActive ? 'var(--ide-text)' : 'var(--ide-text-muted)',
-                  background: isActive ? 'var(--ide-hover)' : 'transparent',
-                }}
-              >
-                {nav}
-              </span>
-            )
-          })}
-        </Space>
+        </Tooltip>
+        <Tooltip title="书签">
+          <Badge count={2} size="small" offset={[-2, 2]} styles={{ indicator: { background: 'var(--ide-accent)' } }}>
+            <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }} role="button" tabIndex={0}>
+              <StarOutlined style={iconStyle} />
+            </span>
+          </Badge>
+        </Tooltip>
       </Space>
-      <Space size="middle">
+
+      {/* 右侧：AI 助手、后端状态、用户信息（头像=首字母+admin+下拉） */}
+      <Space size="middle" style={{ alignItems: 'center' }}>
         <Tooltip title={aiOpen ? '关闭 AI 助手' : 'AI 助手'}>
           <span
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--ide-text-muted)' }}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             onClick={onToggleAI}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && onToggleAI()}
           >
-            <RobotOutlined style={{ fontSize: 16 }} />
+            <RobotOutlined style={iconStyle} />
           </span>
         </Tooltip>
         <Tooltip title={apiHealthy === true ? '后端在线' : apiHealthy === false ? '后端离线' : '检查中…'}>
           <span
             style={{
-              width: 6,
-              height: 6,
+              width: 8,
+              height: 8,
               borderRadius: '50%',
               background: apiHealthy === true ? '#52c41a' : apiHealthy === false ? '#8c8c8c' : 'transparent',
               border: `1px solid ${apiHealthy === null ? '#8c8c8c' : 'transparent'}`,
               display: 'inline-block',
+              flexShrink: 0,
             }}
             aria-label={apiHealthy === true ? '后端在线' : apiHealthy === false ? '后端离线' : '检查中'}
           />
         </Tooltip>
-        <Tooltip title="上传/新建">
-          <span style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--ide-text-muted)' }}>
-            <CameraOutlined style={{ fontSize: 16 }} />
-          </span>
-        </Tooltip>
         <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
-          <Space style={{ cursor: 'pointer', color: 'var(--ide-text)' }}>
-            <Avatar size="small" icon={<UserOutlined />} style={{ background: 'var(--ide-accent)' }} />
-            <span style={{ fontSize: 13 }}>A admin</span>
+          <Space style={{ cursor: 'pointer', color: 'var(--ide-text)', alignItems: 'center' }}>
+            <Avatar
+              size="small"
+              style={{ background: 'var(--ide-accent)', flexShrink: 0 }}
+            >
+              {firstLetter}
+            </Avatar>
+            <span style={{ fontSize: 13 }}>{USER_NAME}</span>
+            <DownOutlined style={{ fontSize: 10, color: 'var(--ide-text-muted)' }} />
           </Space>
         </Dropdown>
-        <Tooltip title="新建">
-          <span
-            style={{
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 28,
-              height: 28,
-              borderRadius: 4,
-              background: 'var(--ide-accent)',
-              color: '#fff',
-            }}
-            role="button"
-            tabIndex={0}
-          >
-            <PlusOutlined style={{ fontSize: 14 }} />
-          </span>
-        </Tooltip>
       </Space>
+
       <HeaderModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </Header>
   )

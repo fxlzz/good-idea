@@ -1,17 +1,22 @@
 :root {
-  --ide-bg: #1a1d23;
-  --ide-header: #16181d;
-  --ide-sidebar: #1e2128;
+  /* 内容区背景 */
+  --ide-bg: #0f0f1a;
+  /* 顶部菜单栏、侧边栏 */
+  --ide-header: #0d0d18;
+  --ide-sidebar: #0d0d18;
+  /* 文件树背景 */
+  --ide-tree-bg: #13131f;
   --ide-sidebar-border: #2c3038;
-  --ide-panel: #252931;
-  --ide-tab-bg: #252931;
-  --ide-tab-active: #722ed1;
-  --ide-tab-active-bg: rgba(114, 46, 209, 0.12);
+  --ide-panel: #13131f;
+  --ide-tab-bg: #0d0d18;
+  --ide-tab-active: #a78bfa;
+  --ide-tab-active-bg: #2d1d52;
   --ide-text: #e4e6eb;
   --ide-text-muted: #8b8f99;
-  --ide-accent: #722ed1;
-  --ide-hover: rgba(255, 255, 255, 0.06);
-  --ide-tree-selected: rgba(114, 46, 209, 0.25);
+  --ide-accent: #a78bfa;
+  /* hover、选中 */
+  --ide-hover: #2d1d52;
+  --ide-tree-selected: #2d1d52;
 }
 
 * {
@@ -58,4 +63,10 @@ body {
 }
 .ide-tree .ant-tree-iconEle {
   color: var(--ide-text-muted);
+}
+
+/* 左侧图标栏 hover */
+.left-sidebar-icon:hover {
+  background: var(--ide-hover) !important;
+  color: var(--ide-text) !important;
 }

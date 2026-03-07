@@ -6,7 +6,7 @@
   --ide-sidebar: #0d0d18;
   /* 文件树背景 */
   --ide-tree-bg: #13131f;
-  --ide-sidebar-border: #2c3038;
+  --ide-sidebar-border: #1e1e28;
   --ide-panel: #13131f;
   --ide-tab-bg: #0d0d18;
   --ide-tab-active: #a78bfa;
@@ -46,23 +46,130 @@ body {
 
 /* File tree dark */
 .ide-tree.ant-tree {
-  background: transparent !important;
+  background: var(--ide-tree-bg) !important;
   color: var(--ide-text);
+  min-height: 100%;
 }
-.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+.ide-tree .ant-tree-list {
+  background: var(--ide-tree-bg) !important;
+}
+.ide-tree .ant-tree-treenode {
+  width: 100%;
+  white-space: nowrap; /* icon + filename on one line */
+}
+.ide-tree .ant-tree-treenode-selected {
   background: var(--ide-tree-selected) !important;
 }
-.ide-tree .ant-tree-node-content-wrapper:hover {
+.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+  background: transparent !important;
+}
+.ide-tree .ant-tree-treenode:hover {
   background: var(--ide-hover) !important;
+}
+.ide-tree .ant-tree-treenode:hover .ant-tree-node-content-wrapper {
+  background: transparent !important;
 }
 .ide-tree .ant-tree-title {
   color: var(--ide-text);
+  min-width: 0; /* allow shrink so ellipsis works */
+  overflow: hidden;
+  flex: 1;
 }
 .ide-tree .ant-tree-switcher {
   color: var(--ide-text-muted);
+  width: 16px;
+  min-width: 16px;
+  padding: 0;
+}
+.ide-tree .ant-tree-indent-unit {
+  width: 16px;
+}
+.ide-tree .ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+  padding-right: 8px;
 }
 .ide-tree .ant-tree-iconEle {
   color: var(--ide-text-muted);
+}
+
+/* Tree node title: name + action buttons (icon + name on one line, name ellipsis when overflow) */
+.ide-tree-node-title {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+.ide-tree-node-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 重命名输入框外层：留出左右空间，避免父级 overflow 裁掉边框 */
+.ide-tree-node-rename-wrapper {
+  flex: 1;
+  min-width: 0;
+  padding: 0 2px;
+  display: flex;
+}
+.ide-tree-node-rename-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 6px;
+  margin: 0;
+  border: 1px solid var(--ide-accent, #1677ff);
+  border-radius: 3px;
+  background: var(--ide-tree-bg);
+  color: var(--ide-text);
+  font: inherit;
+  font-size: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+.ide-tree-node-rename-input:focus {
+  outline: none;
+}
+.ide-tree-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.ide-tree-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--ide-text-muted);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  font-size: 12px;
+}
+.ide-tree-action-btn:hover {
+  color: var(--ide-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+.ide-tree-action-btn.bookmark-active {
+  opacity: 1;
+  color: var(--ide-accent);
+}
+.ide-tree .ant-tree-treenode:hover .ide-tree-action-btn {
+  opacity: 1;
+}
+
+/* 文件树下拉菜单加宽 */
+.ide-tree-dropdown-menu.ant-dropdown .ant-dropdown-menu {
+  min-width: 180px;
 }
 
 /* 左侧图标栏 hover */

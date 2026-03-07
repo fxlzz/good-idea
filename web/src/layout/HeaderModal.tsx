@@ -14,6 +14,7 @@ export default function HeaderModal({ open, onClose }: HeaderModalProps) {
   const nodes = useFileTreeStore((s) => s.nodes)
   const getNode = useFileTreeStore((s) => s.getNode)
   const openFile = useFileTreeStore((s) => s.openFile)
+  const setExpanded = useFileTreeStore((s) => s.setExpanded)
   const nodeIds = useBookmarksStore((s) => s.nodeIds)
 
   const allFiles = useMemo(
@@ -24,11 +25,11 @@ export default function HeaderModal({ open, onClose }: HeaderModalProps) {
     [nodes]
   )
 
-  const bookmarkedFiles = useMemo(
+  const bookmarkedNodes = useMemo(
     () =>
       nodeIds
         .map((id) => getNode(id))
-        .filter((n): n is NonNullable<typeof n> => !!n && n.type === 'file'),
+        .filter((n): n is NonNullable<typeof n> => !!n),
     [nodeIds, getNode]
   )
 
@@ -44,6 +45,12 @@ export default function HeaderModal({ open, onClose }: HeaderModalProps) {
 
   const handleOpen = (nodeId: string) => {
     openFile(nodeId)
+    onClose()
+  }
+
+  const handleOpenBookmark = (node: { id: string; type: 'file' | 'folder' }) => {
+    if (node.type === 'file') openFile(node.id)
+    else setExpanded(node.id, true)
     onClose()
   }
 
@@ -130,20 +137,20 @@ export default function HeaderModal({ open, onClose }: HeaderModalProps) {
               <>
                 <List
                   style={{ maxHeight: 360, overflow: 'auto' }}
-                  dataSource={bookmarkedFiles}
+                  dataSource={bookmarkedNodes}
                   rowKey="id"
                   renderItem={(n) => (
                     <List.Item
                       style={{ cursor: 'pointer' }}
-                      onClick={() => handleOpen(n.id)}
+                      onClick={() => handleOpenBookmark(n)}
                     >
                       {n.name}
                     </List.Item>
                   )}
                 />
-                {bookmarkedFiles.length === 0 && (
+                {bookmarkedNodes.length === 0 && (
                   <div style={{ color: '#999', textAlign: 'center', padding: 24 }}>
-                    暂无书签，在文件中可添加书签
+                    暂无书签，在文件或文件夹上右键可添加书签
                   </div>
                 )}
               </>

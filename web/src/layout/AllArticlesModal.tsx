@@ -26,6 +26,7 @@ export default function AllArticlesModal({ open, onClose }: AllArticlesModalProp
   const nodes = useFileTreeStore((s) => s.nodes)
   const getNode = useFileTreeStore((s) => s.getNode)
   const openFile = useFileTreeStore((s) => s.openFile)
+  const setExpanded = useFileTreeStore((s) => s.setExpanded)
   const nodeIds = useBookmarksStore((s) => s.nodeIds)
 
   const allFiles = useMemo(
@@ -36,11 +37,11 @@ export default function AllArticlesModal({ open, onClose }: AllArticlesModalProp
     [nodes]
   )
 
-  const bookmarkedFiles = useMemo(
+  const bookmarkedNodes = useMemo(
     () =>
       nodeIds
         .map((id) => getNode(id))
-        .filter((n): n is NonNullable<typeof n> => !!n && n.type === 'file'),
+        .filter((n): n is NonNullable<typeof n> => !!n),
     [nodeIds, getNode]
   )
 
@@ -56,13 +57,13 @@ export default function AllArticlesModal({ open, onClose }: AllArticlesModalProp
 
   const filteredBookmarks = useMemo(() => {
     const q = filter.trim().toLowerCase()
-    if (!q) return bookmarkedFiles
-    return bookmarkedFiles.filter(
+    if (!q) return bookmarkedNodes
+    return bookmarkedNodes.filter(
       (n) =>
         n.name.toLowerCase().includes(q) ||
         (typeof n.content === 'string' && n.content.toLowerCase().includes(q))
     )
-  }, [bookmarkedFiles, filter])
+  }, [bookmarkedNodes, filter])
 
   const list = activeTab === 'all' ? filteredAll : filteredBookmarks
   const totalLabel =
@@ -72,6 +73,12 @@ export default function AllArticlesModal({ open, onClose }: AllArticlesModalProp
 
   const handleOpen = (nodeId: string) => {
     openFile(nodeId)
+    onClose()
+  }
+
+  const handleOpenBookmark = (node: { id: string; type: 'file' | 'folder' }) => {
+    if (node.type === 'file') openFile(node.id)
+    else setExpanded(node.id, true)
     onClose()
   }
 
@@ -127,7 +134,9 @@ export default function AllArticlesModal({ open, onClose }: AllArticlesModalProp
                 padding: '12px 0',
                 borderBottom: '1px solid var(--ide-sidebar-border)',
               }}
-              onClick={() => handleOpen(n.id)}
+              onClick={() =>
+                activeTab === 'bookmarks' ? handleOpenBookmark(n) : handleOpen(n.id)
+              }
             >
               <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%', gap: 12 }}>
                 <FileTextOutlined

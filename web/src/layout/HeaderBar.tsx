@@ -32,11 +32,12 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
   const nodeIds = useBookmarksStore((s) => s.nodeIds)
   const getNode = useFileTreeStore((s) => s.getNode)
   const openFile = useFileTreeStore((s) => s.openFile)
+  const setExpanded = useFileTreeStore((s) => s.setExpanded)
 
-  const bookmarkedFiles = nodeIds
+  const bookmarkedNodes = nodeIds
     .map((id) => getNode(id))
-    .filter((n): n is NonNullable<typeof n> => !!n && n.type === 'file')
-  const bookmarkCount = bookmarkedFiles.length
+    .filter((n): n is NonNullable<typeof n> => !!n)
+  const bookmarkCount = bookmarkedNodes.length
 
   useEffect(() => {
     const check = async () => {
@@ -67,16 +68,19 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
     { key: 'logout', label: '登出' },
   ]
 
-  const iconStyle = { fontSize: 18, color: 'var(--ide-text-muted)' }
+  const iconStyle = { fontSize: 16, color: 'var(--ide-text-muted)' }
 
   const bookmarkMenuItems: MenuProps['items'] =
-    bookmarkedFiles.length === 0
+    bookmarkedNodes.length === 0
       ? [{ key: '_empty', label: '暂无书签', disabled: true }]
-      : bookmarkedFiles.map((n) => ({
+      : bookmarkedNodes.map((n) => ({
           key: n.id,
           icon: <span style={{ color: 'var(--ide-accent)' }}>🔖</span>,
           label: n.name,
-          onClick: () => openFile(n.id),
+          onClick: () => {
+            if (n.type === 'file') openFile(n.id)
+            else setExpanded(n.id, true)
+          },
         }))
 
   return (
@@ -85,33 +89,46 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 16px',
+        padding: '0 16px 0 0',
         background: 'var(--ide-header)',
         color: 'var(--ide-text)',
         height: 48,
         borderBottom: '1px solid var(--ide-sidebar-border)',
-        borderBottomLeftRadius: 12,
-        borderBottomRightRadius: 12,
       }}
     >
-      {/* 左侧：Logo（左对齐）+ 文件夹、搜索、书签 */}
-      <Space size="middle" style={{ minWidth: 0 }}>
+      <div
+        style={{
+          width: 48,
+          minWidth: 48,
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRight: '1px solid var(--ide-sidebar-border)',
+          borderBottom: '1px solid var(--ide-sidebar-border)',
+          boxSizing: 'border-box',
+          flexShrink: 0,
+        }}
+      >
         <span
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 36,
-            height: 36,
-            borderRadius: 8,
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
             background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
             color: '#fff',
             cursor: 'default',
           }}
           aria-hidden
         >
-          <BookOutlined style={{ fontSize: 20 }} />
+          <BookOutlined style={{ fontSize: 14 }} />
         </span>
+      </div>
+      {/* 文件夹、搜索、书签 */}
+      <Space size="middle" style={{ paddingLeft: 12, minWidth: 0 }}>
         <Tooltip title="所有文章">
           <span
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}

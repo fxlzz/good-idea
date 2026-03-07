@@ -55,6 +55,7 @@ body {
 }
 .ide-tree .ant-tree-treenode {
   width: 100%;
+  white-space: nowrap; /* icon + filename on one line */
 }
 .ide-tree .ant-tree-treenode-selected {
   background: var(--ide-tree-selected) !important;
@@ -70,6 +71,9 @@ body {
 }
 .ide-tree .ant-tree-title {
   color: var(--ide-text);
+  min-width: 0; /* allow shrink so ellipsis works */
+  overflow: hidden;
+  flex: 1;
 }
 .ide-tree .ant-tree-switcher {
   color: var(--ide-text-muted);
@@ -81,6 +85,11 @@ body {
   width: 16px;
 }
 .ide-tree .ant-tree-node-content-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
   padding-left: 0 !important;
   margin-left: 0 !important;
   padding-right: 8px;
@@ -89,17 +98,34 @@ body {
   color: var(--ide-text-muted);
 }
 
-/* Tree node title: name + action buttons */
+/* Tree node title: name + action buttons (icon + name on one line, name ellipsis when overflow) */
 .ide-tree-node-title {
   display: flex;
   align-items: center;
   width: 100%;
+  min-width: 0;
 }
 .ide-tree-node-name {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.ide-tree-node-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+  margin: 0 -4px;
+  border: 1px solid var(--ide-accent, #1677ff);
+  border-radius: 3px;
+  background: var(--ide-tree-bg);
+  color: var(--ide-text);
+  font: inherit;
+  font-size: inherit;
+  outline: none;
+}
+.ide-tree-node-rename-input:focus {
+  outline: none;
 }
 .ide-tree-node-actions {
   display: flex;
@@ -131,6 +157,11 @@ body {
 }
 .ide-tree .ant-tree-treenode:hover .ide-tree-action-btn {
   opacity: 1;
+}
+
+/* 文件树下拉菜单加宽 */
+.ide-tree-dropdown-menu.ant-dropdown .ant-dropdown-menu {
+  min-width: 180px;
 }
 
 /* 左侧图标栏 hover */

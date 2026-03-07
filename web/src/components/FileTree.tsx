@@ -14,7 +14,7 @@ import {
 import { Dropdown, Tree } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import type { MenuProps } from 'antd'
-import { memo, useCallback, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useBookmarksStore } from '../store/bookmarks'
 import { useFileTreeStore } from '../store/fileTree'
 
@@ -22,63 +22,108 @@ function generateId(): string {
   return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
 }
 
+// ── Inline input for creating a new file or folder ──────────────────────────
+type PendingNew = { parentId: string | null; type: 'file' | 'folder' }
+
+const NewNodeInput = memo(function NewNodeInput({
+  parentId,
+  type,
+  onDone,
+}: PendingNew & { onDone: () => void }) {
+  const [value, setValue] = useState('')
+  const addNode = useFileTreeStore((s) => s.addNode)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [])
+
+  const commit = useCallback(() => {
+    const trimmed = value.trim()
+    if (trimmed) {
+      addNode({ id: generateId(), name: trimmed, type, parentId })
+    }
+    onDone()
+  }, [value, type, parentId, addNode, onDone])
+
+  return (
+    <span className="ide-tree-node-title">
+      <input
+        ref={inputRef}
+        className="ide-tree-node-rename-input"
+        value={value}
+        placeholder="文件名 (回车确认)"
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation()
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') onDone()
+        }}
+        onBlur={onDone}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </span>
+  )
+})
+
+// ── Tree node title ──────────────────────────────────────────────────────────
+type NodeTitleProps = {
+  nodeId: string
+  name: string
+  type: 'file' | 'folder'
+  isEditing: boolean
+  onStartRename: () => void
+  onStopRename: () => void
+  onNewFile: () => void
+  onNewFolder: () => void
+}
+
 const NodeTitle = memo(function NodeTitle({
   nodeId,
   name,
   type,
-}: {
-  nodeId: string
-  name: string
-  type: 'file' | 'folder'
-}) {
+  isEditing,
+  onStartRename,
+  onStopRename,
+  onNewFile,
+  onNewFolder,
+}: NodeTitleProps) {
   const isBookmarked = useBookmarksStore((s) => s.nodeIds.includes(nodeId))
   const toggleBookmark = useBookmarksStore((s) => s.toggle)
-  const addNode = useFileTreeStore((s) => s.addNode)
   const updateNode = useFileTreeStore((s) => s.updateNode)
   const deleteNode = useFileTreeStore((s) => s.deleteNode)
-  const setExpanded = useFileTreeStore((s) => s.setExpanded)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const addNode = useFileTreeStore((s) => s.addNode)
+  const setExpanded = useFileTreeStore((s) => s.setExpanded)
+  const [editValue, setEditValue] = useState(name)
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditValue(name)
+      requestAnimationFrame(() => {
+        renameInputRef.current?.focus()
+        renameInputRef.current?.select()
+      })
+    }
+  }, [isEditing, name])
 
   const handleFolderMenu: MenuProps['onClick'] = useCallback(
     ({ key, domEvent }: { key: string; domEvent: React.MouseEvent | React.KeyboardEvent }) => {
       domEvent.stopPropagation()
       switch (key) {
-        case 'newFile': {
-          const fileName = window.prompt('请输入文件名')
-          if (fileName?.trim()) {
-            addNode({
-              id: generateId(),
-              name: fileName.trim(),
-              type: 'file',
-              parentId: nodeId,
-            })
-            setExpanded(nodeId, true)
-          }
+        case 'newFile':
+          onNewFile()
           break
-        }
-        case 'newFolder': {
-          const folderName = window.prompt('请输入文件夹名')
-          if (folderName?.trim()) {
-            addNode({
-              id: generateId(),
-              name: folderName.trim(),
-              type: 'folder',
-              parentId: nodeId,
-            })
-            setExpanded(nodeId, true)
-          }
+        case 'newFolder':
+          onNewFolder()
           break
-        }
         case 'upload':
           fileInputRef.current?.click()
           break
-        case 'rename': {
-          const newName = window.prompt('请输入新名称', name)
-          if (newName?.trim() && newName.trim() !== name) {
-            updateNode(nodeId, { name: newName.trim() })
-          }
+        case 'rename':
+          onStartRename()
           break
-        }
         case 'bookmark':
           toggleBookmark(nodeId)
           break
@@ -87,26 +132,25 @@ const NodeTitle = memo(function NodeTitle({
           break
       }
     },
-    [nodeId, name, addNode, updateNode, deleteNode, setExpanded, toggleBookmark],
+    [nodeId, deleteNode, toggleBookmark, onStartRename, onNewFile, onNewFolder],
   )
 
   const handleFileMenu: MenuProps['onClick'] = useCallback(
     ({ key, domEvent }: { key: string; domEvent: React.MouseEvent | React.KeyboardEvent }) => {
       domEvent.stopPropagation()
       switch (key) {
-        case 'rename': {
-          const newName = window.prompt('请输入新名称', name)
-          if (newName?.trim() && newName.trim() !== name) {
-            updateNode(nodeId, { name: newName.trim() })
-          }
+        case 'rename':
+          onStartRename()
           break
-        }
         case 'bookmark':
           toggleBookmark(nodeId)
           break
+        case 'delete':
+          deleteNode(nodeId)
+          break
       }
     },
-    [nodeId, name, updateNode, toggleBookmark],
+    [nodeId, toggleBookmark, onStartRename, deleteNode],
   )
 
   const handleUpload = useCallback(
@@ -138,6 +182,41 @@ const NodeTitle = memo(function NodeTitle({
     [nodeId, toggleBookmark],
   )
 
+  const handleSaveRename = useCallback(() => {
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed !== name) {
+      updateNode(nodeId, { name: trimmed })
+    }
+    onStopRename()
+  }, [editValue, name, nodeId, updateNode, onStopRename])
+
+  const handleRenameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      e.stopPropagation()
+      if (e.key === 'Enter') handleSaveRename()
+      if (e.key === 'Escape') onStopRename()
+    },
+    [handleSaveRename, onStopRename],
+  )
+
+  const renderName = () => {
+    if (isEditing) {
+      return (
+        <input
+          ref={renameInputRef}
+          className="ide-tree-node-rename-input"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={handleSaveRename}
+          onKeyDown={handleRenameKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          aria-label="重命名"
+        />
+      )
+    }
+    return <span className="ide-tree-node-name">{name}</span>
+  }
+
   const folderMenuItems: MenuProps['items'] = useMemo(
     () => [
       { key: 'newFile', icon: <FileAddOutlined />, label: '新建文件' },
@@ -164,6 +243,8 @@ const NodeTitle = memo(function NodeTitle({
         icon: isBookmarked ? <BookFilled /> : <BookOutlined />,
         label: isBookmarked ? '取消书签' : '添加书签',
       },
+      { type: 'divider' as const },
+      { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true },
     ],
     [isBookmarked],
   )
@@ -171,9 +252,20 @@ const NodeTitle = memo(function NodeTitle({
   if (type === 'folder') {
     return (
       <span className="ide-tree-node-title">
-        <span className="ide-tree-node-name">{name}</span>
+        {renderName()}
         <span className="ide-tree-node-actions">
+          {isBookmarked && (
+            <span
+              className="ide-tree-action-btn bookmark-active"
+              onClick={handleBookmarkClick}
+              role="button"
+            >
+              <BookFilled />
+            </span>
+          )}
           <Dropdown
+            getPopupContainer={() => document.body}
+            overlayClassName="ide-tree-dropdown-menu"
             menu={{ items: folderMenuItems, onClick: handleFolderMenu }}
             trigger={['click']}
           >
@@ -198,16 +290,20 @@ const NodeTitle = memo(function NodeTitle({
 
   return (
     <span className="ide-tree-node-title">
-      <span className="ide-tree-node-name">{name}</span>
+      {renderName()}
       <span className="ide-tree-node-actions">
-        <span
-          className={`ide-tree-action-btn ${isBookmarked ? 'bookmark-active' : ''}`}
-          onClick={handleBookmarkClick}
-          role="button"
-        >
-          {isBookmarked ? <BookFilled /> : <BookOutlined />}
-        </span>
+        {isBookmarked && (
+          <span
+            className="ide-tree-action-btn bookmark-active"
+            onClick={handleBookmarkClick}
+            role="button"
+          >
+            <BookFilled />
+          </span>
+        )}
         <Dropdown
+          getPopupContainer={() => document.body}
+          overlayClassName="ide-tree-dropdown-menu"
           menu={{ items: fileMenuItems, onClick: handleFileMenu }}
           trigger={['click']}
         >
@@ -224,35 +320,82 @@ const NodeTitle = memo(function NodeTitle({
   )
 })
 
+// ── FileTree root ────────────────────────────────────────────────────────────
 export default function FileTree() {
   const nodes = useFileTreeStore((s) => s.nodes)
   const getChildren = useFileTreeStore((s) => s.getChildren)
   const expandedFolderIds = useFileTreeStore((s) => s.expandedFolderIds)
   const setExpandedIds = useFileTreeStore((s) => s.setExpandedIds)
+  const setExpanded = useFileTreeStore((s) => s.setExpanded)
   const openFile = useFileTreeStore((s) => s.openFile)
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
+  const [pendingNew, setPendingNew] = useState<PendingNew | null>(null)
+
+  const clearPending = useCallback(() => setPendingNew(null), [])
 
   const treeData: DataNode[] = useMemo(() => {
     function build(parentId: string | null): DataNode[] {
       const list = getChildren(parentId)
-      return list.map((n) => ({
-        key: n.id,
-        title: <NodeTitle nodeId={n.id} name={n.name} type={n.type} />,
-        isLeaf: n.type === 'file',
-        icon:
-          n.type === 'folder' ? (
-            expandedFolderIds.has(n.id) ? (
-              <FolderOpenOutlined />
-            ) : (
-              <FolderOutlined />
-            )
-          ) : (
-            <FileOutlined />
+      const result: DataNode[] = list.map((n) => {
+        // Inject pending-new input as a child of this folder
+        const pendingChild: DataNode[] =
+          pendingNew?.parentId === n.id
+            ? [
+                {
+                  key: `__pending__${n.id}`,
+                  isLeaf: true,
+                  icon:
+                    pendingNew.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
+                  title: (
+                    <NewNodeInput
+                      parentId={n.id}
+                      type={pendingNew.type}
+                      onDone={clearPending}
+                    />
+                  ),
+                },
+              ]
+            : []
+
+        return {
+          key: n.id,
+          title: (
+            <NodeTitle
+              nodeId={n.id}
+              name={n.name}
+              type={n.type}
+              isEditing={editingNodeId === n.id}
+              onStartRename={() => setEditingNodeId(n.id)}
+              onStopRename={() => setEditingNodeId(null)}
+              onNewFile={() => {
+                setExpanded(n.id, true)
+                setPendingNew({ parentId: n.id, type: 'file' })
+              }}
+              onNewFolder={() => {
+                setExpanded(n.id, true)
+                setPendingNew({ parentId: n.id, type: 'folder' })
+              }}
+            />
           ),
-        children: n.type === 'folder' ? build(n.id) : undefined,
-      }))
+          isLeaf: n.type === 'file',
+          icon:
+            n.type === 'folder' ? (
+              expandedFolderIds.has(n.id) ? (
+                <FolderOpenOutlined />
+              ) : (
+                <FolderOutlined />
+              )
+            ) : (
+              <FileOutlined />
+            ),
+          children: n.type === 'folder' ? [...build(n.id), ...pendingChild] : undefined,
+        }
+      })
+
+      return result
     }
     return build(null)
-  }, [nodes, getChildren, expandedFolderIds])
+  }, [nodes, getChildren, expandedFolderIds, editingNodeId, pendingNew, setExpanded, clearPending])
 
   const expandedKeys = useMemo(() => Array.from(expandedFolderIds), [expandedFolderIds])
 
@@ -262,6 +405,7 @@ export default function FileTree() {
 
   const onSelect = (_: React.Key[], info: { node: { key: React.Key } }) => {
     const key = String(info.node.key)
+    if (key.startsWith('__pending__')) return
     const node = useFileTreeStore.getState().getNode(key)
     if (node?.type === 'file') openFile(key)
   }

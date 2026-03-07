@@ -1,19 +1,23 @@
 import { ApartmentOutlined, CodeOutlined, FormOutlined } from '@ant-design/icons'
 import { Layout, Tooltip } from 'antd'
+import { useFileTreeStore } from '../store/fileTree'
 import { useLayoutStore } from '../store/layout'
 
-const SIDEBAR_WIDTH = 56
+const SIDEBAR_WIDTH = 48
 
 export default function LeftIconSidebar() {
-  const mainView = useLayoutStore((s) => s.mainView)
+  const openSpecialTab = useFileTreeStore((s) => s.openSpecialTab)
+  const activeTabId = useFileTreeStore((s) => s.activeTabId)
+  const openTabs = useFileTreeStore((s) => s.openTabs)
   const terminalVisible = useLayoutStore((s) => s.terminalVisible)
-  const setMainView = useLayoutStore((s) => s.setMainView)
   const toggleTerminal = useLayoutStore((s) => s.toggleTerminal)
 
-  const iconSize = 20
+  const activeTab = openTabs.find((t) => t.id === activeTabId)
+
+  const iconSize = 16
   const iconBox = {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -42,13 +46,13 @@ export default function LeftIconSidebar() {
           className="left-sidebar-icon"
           style={{
             ...iconBox,
-            background: mainView === 'whiteboard' ? 'var(--ide-tab-active-bg)' : 'transparent',
-            color: mainView === 'whiteboard' ? '#fff' : 'var(--ide-text-muted)',
+            background: activeTab?.type === 'whiteboard' ? 'var(--ide-tab-active-bg)' : 'transparent',
+            color: activeTab?.type === 'whiteboard' ? '#fff' : 'var(--ide-text-muted)',
           }}
-          onClick={() => setMainView('whiteboard')}
+          onClick={() => openSpecialTab('whiteboard')}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setMainView('whiteboard')}
+          onKeyDown={(e) => e.key === 'Enter' && openSpecialTab('whiteboard')}
         >
           <FormOutlined style={{ fontSize: iconSize }} />
         </span>
@@ -58,13 +62,13 @@ export default function LeftIconSidebar() {
           className="left-sidebar-icon"
           style={{
             ...iconBox,
-            background: mainView === 'graph' ? 'var(--ide-tab-active-bg)' : 'transparent',
-            color: mainView === 'graph' ? '#fff' : 'var(--ide-text-muted)',
+            background: activeTab?.type === 'graph' ? 'var(--ide-tab-active-bg)' : 'transparent',
+            color: activeTab?.type === 'graph' ? '#fff' : 'var(--ide-text-muted)',
           }}
-          onClick={() => setMainView('graph')}
+          onClick={() => openSpecialTab('graph')}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setMainView('graph')}
+          onKeyDown={(e) => e.key === 'Enter' && openSpecialTab('graph')}
         >
           <ApartmentOutlined style={{ fontSize: iconSize }} />
         </span>

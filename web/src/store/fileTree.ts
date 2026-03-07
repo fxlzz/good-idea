@@ -12,9 +12,12 @@ export type FileNode = {
   updatedAt: number
 }
 
+export type TabType = 'file' | 'whiteboard' | 'graph'
+
 export type TabItem = {
   id: string
-  nodeId: string
+  type: TabType
+  nodeId?: string
   title: string
 }
 
@@ -30,11 +33,13 @@ type FileTreeState = {
   setExpanded: (id: string, expanded: boolean) => void
   setExpandedIds: (ids: string[]) => void
   openFile: (nodeId: string) => void
+  openSpecialTab: (type: 'whiteboard' | 'graph') => void
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string | null) => void
   setSortBy: (sortBy: 'name' | 'updated') => void
   getChildren: (parentId: string | null) => FileNode[]
   getNode: (id: string) => FileNode | undefined
+  getRecentFiles: (count: number) => FileNode[]
 }
 
 const STORAGE_KEY = 'good-idea-files'
@@ -103,10 +108,10 @@ export const useFileTreeStore = create<FileTreeState>()(
         set((state) => {
           const nodes = { ...state.nodes }
           toRemove.forEach((rid) => delete nodes[rid])
-          const openTabs = state.openTabs.filter((t) => !toRemove.has(t.nodeId))
+          const openTabs = state.openTabs.filter((t) => !t.nodeId || !toRemove.has(t.nodeId))
           const activeTabId =
             state.activeTabId &&
-            toRemove.has(state.openTabs.find((t) => t.id === state.activeTabId)?.nodeId ?? '')
+            toRemove.has(state.openTabs.find((t) => t.id === state.activeTabId)?.nodeId ?? 'x')
               ? (openTabs[openTabs.length - 1]?.id ?? null)
               : state.activeTabId
           return { nodes, openTabs, activeTabId }
@@ -128,10 +133,11 @@ export const useFileTreeStore = create<FileTreeState>()(
         const node = get().nodes[nodeId]
         if (!node || node.type !== 'file') return
         set((s) => {
-          const exists = s.openTabs.find((t) => t.nodeId === nodeId)
+          const exists = s.openTabs.find((t) => t.type === 'file' && t.nodeId === nodeId)
           if (exists) return { activeTabId: exists.id }
           const tab: TabItem = {
             id: generateId(),
+            type: 'file',
             nodeId,
             title: node.name,
           }
@@ -139,6 +145,16 @@ export const useFileTreeStore = create<FileTreeState>()(
             openTabs: [...s.openTabs, tab],
             activeTabId: tab.id,
           }
+        })
+      },
+
+      openSpecialTab: (type) => {
+        set((s) => {
+          const existing = s.openTabs.find((t) => t.type === type)
+          if (existing) return { activeTabId: existing.id }
+          const title = type === 'whiteboard' ? '白板' : '知识图谱'
+          const tab: TabItem = { id: `__${type}__`, type, title }
+          return { openTabs: [...s.openTabs, tab], activeTabId: tab.id }
         })
       },
 
@@ -171,6 +187,12 @@ export const useFileTreeStore = create<FileTreeState>()(
       },
 
       getNode: (id) => get().nodes[id],
+
+      getRecentFiles: (count) => {
+        const all = Object.values(get().nodes).filter((n) => n.type === 'file')
+        all.sort((a, b) => b.updatedAt - a.updatedAt)
+        return all.slice(0, count)
+      },
     }),
     {
       name: STORAGE_KEY,
@@ -186,6 +208,9 @@ export const useFileTreeStore = create<FileTreeState>()(
         return {
           ...current,
           ...p,
+          openTabs: Array.isArray(p?.openTabs)
+            ? (p.openTabs as TabItem[]).map((t) => ({ ...t, type: t.type ?? ('file' as const) }))
+            : current.openTabs,
           expandedFolderIds: Array.isArray(p?.expandedFolderIds)
             ? new Set(p.expandedFolderIds)
             : current.expandedFolderIds,

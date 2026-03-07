@@ -32,11 +32,12 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
   const nodeIds = useBookmarksStore((s) => s.nodeIds)
   const getNode = useFileTreeStore((s) => s.getNode)
   const openFile = useFileTreeStore((s) => s.openFile)
+  const setExpanded = useFileTreeStore((s) => s.setExpanded)
 
-  const bookmarkedFiles = nodeIds
+  const bookmarkedNodes = nodeIds
     .map((id) => getNode(id))
-    .filter((n): n is NonNullable<typeof n> => !!n && n.type === 'file')
-  const bookmarkCount = bookmarkedFiles.length
+    .filter((n): n is NonNullable<typeof n> => !!n)
+  const bookmarkCount = bookmarkedNodes.length
 
   useEffect(() => {
     const check = async () => {
@@ -70,13 +71,16 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
   const iconStyle = { fontSize: 16, color: 'var(--ide-text-muted)' }
 
   const bookmarkMenuItems: MenuProps['items'] =
-    bookmarkedFiles.length === 0
+    bookmarkedNodes.length === 0
       ? [{ key: '_empty', label: '暂无书签', disabled: true }]
-      : bookmarkedFiles.map((n) => ({
+      : bookmarkedNodes.map((n) => ({
           key: n.id,
           icon: <span style={{ color: 'var(--ide-accent)' }}>🔖</span>,
           label: n.name,
-          onClick: () => openFile(n.id),
+          onClick: () => {
+            if (n.type === 'file') openFile(n.id)
+            else setExpanded(n.id, true)
+          },
         }))
 
   return (

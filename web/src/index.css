@@ -111,11 +111,18 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ide-tree-node-rename-input {
+/* 重命名输入框外层：留出左右空间，避免父级 overflow 裁掉边框 */
+.ide-tree-node-rename-wrapper {
   flex: 1;
   min-width: 0;
-  padding: 0 4px;
-  margin: 0 -4px;
+  padding: 0 2px;
+  display: flex;
+}
+.ide-tree-node-rename-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 6px;
+  margin: 0;
   border: 1px solid var(--ide-accent, #1677ff);
   border-radius: 3px;
   background: var(--ide-tree-bg);
@@ -123,6 +130,7 @@ body {
   font: inherit;
   font-size: inherit;
   outline: none;
+  box-sizing: border-box;
 }
 .ide-tree-node-rename-input:focus {
   outline: none;

@@ -47,20 +47,22 @@ const NewNodeInput = memo(function NewNodeInput({
 
   return (
     <span className="ide-tree-node-title">
-      <input
-        ref={inputRef}
-        className="ide-tree-node-rename-input"
-        value={value}
-        placeholder="文件名 (回车确认)"
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          e.stopPropagation()
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') onDone()
-        }}
-        onBlur={onDone}
-        onClick={(e) => e.stopPropagation()}
-      />
+      <span className="ide-tree-node-rename-wrapper">
+        <input
+          ref={inputRef}
+          className="ide-tree-node-rename-input"
+          value={value}
+          placeholder="文件名 (回车确认)"
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') commit()
+            if (e.key === 'Escape') onDone()
+          }}
+          onBlur={onDone}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </span>
     </span>
   )
 })
@@ -201,16 +203,18 @@ const NodeTitle = memo(function NodeTitle({
   const renderName = () => {
     if (isEditing) {
       return (
-        <input
-          ref={renameInputRef}
-          className="ide-tree-node-rename-input"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={handleSaveRename}
-          onKeyDown={handleRenameKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="重命名"
-        />
+        <span className="ide-tree-node-rename-wrapper">
+          <input
+            ref={renameInputRef}
+            className="ide-tree-node-rename-input"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSaveRename}
+            onKeyDown={handleRenameKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="重命名"
+          />
+        </span>
       )
     }
     return <span className="ide-tree-node-name">{name}</span>

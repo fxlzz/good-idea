@@ -6,7 +6,7 @@
   --ide-sidebar: #0d0d18;
   /* 文件树背景 */
   --ide-tree-bg: #13131f;
-  --ide-sidebar-border: #2c3038;
+  --ide-sidebar-border: #1e1e28;
   --ide-panel: #13131f;
   --ide-tab-bg: #0d0d18;
   --ide-tab-active: #a78bfa;
@@ -46,23 +46,91 @@ body {
 
 /* File tree dark */
 .ide-tree.ant-tree {
-  background: transparent !important;
+  background: var(--ide-tree-bg) !important;
   color: var(--ide-text);
+  min-height: 100%;
 }
-.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+.ide-tree .ant-tree-list {
+  background: var(--ide-tree-bg) !important;
+}
+.ide-tree .ant-tree-treenode {
+  width: 100%;
+}
+.ide-tree .ant-tree-treenode-selected {
   background: var(--ide-tree-selected) !important;
 }
-.ide-tree .ant-tree-node-content-wrapper:hover {
+.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+  background: transparent !important;
+}
+.ide-tree .ant-tree-treenode:hover {
   background: var(--ide-hover) !important;
+}
+.ide-tree .ant-tree-treenode:hover .ant-tree-node-content-wrapper {
+  background: transparent !important;
 }
 .ide-tree .ant-tree-title {
   color: var(--ide-text);
 }
 .ide-tree .ant-tree-switcher {
   color: var(--ide-text-muted);
+  width: 16px;
+  min-width: 16px;
+  padding: 0;
+}
+.ide-tree .ant-tree-indent-unit {
+  width: 16px;
+}
+.ide-tree .ant-tree-node-content-wrapper {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+  padding-right: 8px;
 }
 .ide-tree .ant-tree-iconEle {
   color: var(--ide-text-muted);
+}
+
+/* Tree node title: name + action buttons */
+.ide-tree-node-title {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.ide-tree-node-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-tree-node-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.ide-tree-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--ide-text-muted);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  font-size: 12px;
+}
+.ide-tree-action-btn:hover {
+  color: var(--ide-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+.ide-tree-action-btn.bookmark-active {
+  opacity: 1;
+  color: var(--ide-accent);
+}
+.ide-tree .ant-tree-treenode:hover .ide-tree-action-btn {
+  opacity: 1;
 }
 
 /* 左侧图标栏 hover */

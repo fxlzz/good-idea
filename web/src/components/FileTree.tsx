@@ -1,28 +1,242 @@
-import { FileOutlined, FolderOutlined, FolderOpenOutlined } from '@ant-design/icons'
-import { Tree } from 'antd'
+import {
+  BookFilled,
+  BookOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EllipsisOutlined,
+  FileAddOutlined,
+  FileOutlined,
+  FolderAddOutlined,
+  FolderOpenOutlined,
+  FolderOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
+import { Dropdown, Tree } from 'antd'
 import type { DataNode } from 'antd/es/tree'
-import { useEffect, useMemo, useState } from 'react'
+import type { MenuProps } from 'antd'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import { useBookmarksStore } from '../store/bookmarks'
 import { useFileTreeStore } from '../store/fileTree'
+
+function generateId(): string {
+  return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+}
+
+const NodeTitle = memo(function NodeTitle({
+  nodeId,
+  name,
+  type,
+}: {
+  nodeId: string
+  name: string
+  type: 'file' | 'folder'
+}) {
+  const isBookmarked = useBookmarksStore((s) => s.nodeIds.includes(nodeId))
+  const toggleBookmark = useBookmarksStore((s) => s.toggle)
+  const addNode = useFileTreeStore((s) => s.addNode)
+  const updateNode = useFileTreeStore((s) => s.updateNode)
+  const deleteNode = useFileTreeStore((s) => s.deleteNode)
+  const setExpanded = useFileTreeStore((s) => s.setExpanded)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFolderMenu: MenuProps['onClick'] = useCallback(
+    ({ key, domEvent }: { key: string; domEvent: React.MouseEvent | React.KeyboardEvent }) => {
+      domEvent.stopPropagation()
+      switch (key) {
+        case 'newFile': {
+          const fileName = window.prompt('请输入文件名')
+          if (fileName?.trim()) {
+            addNode({
+              id: generateId(),
+              name: fileName.trim(),
+              type: 'file',
+              parentId: nodeId,
+            })
+            setExpanded(nodeId, true)
+          }
+          break
+        }
+        case 'newFolder': {
+          const folderName = window.prompt('请输入文件夹名')
+          if (folderName?.trim()) {
+            addNode({
+              id: generateId(),
+              name: folderName.trim(),
+              type: 'folder',
+              parentId: nodeId,
+            })
+            setExpanded(nodeId, true)
+          }
+          break
+        }
+        case 'upload':
+          fileInputRef.current?.click()
+          break
+        case 'rename': {
+          const newName = window.prompt('请输入新名称', name)
+          if (newName?.trim() && newName.trim() !== name) {
+            updateNode(nodeId, { name: newName.trim() })
+          }
+          break
+        }
+        case 'bookmark':
+          toggleBookmark(nodeId)
+          break
+        case 'delete':
+          deleteNode(nodeId)
+          break
+      }
+    },
+    [nodeId, name, addNode, updateNode, deleteNode, setExpanded, toggleBookmark],
+  )
+
+  const handleFileMenu: MenuProps['onClick'] = useCallback(
+    ({ key, domEvent }: { key: string; domEvent: React.MouseEvent | React.KeyboardEvent }) => {
+      domEvent.stopPropagation()
+      switch (key) {
+        case 'rename': {
+          const newName = window.prompt('请输入新名称', name)
+          if (newName?.trim() && newName.trim() !== name) {
+            updateNode(nodeId, { name: newName.trim() })
+          }
+          break
+        }
+        case 'bookmark':
+          toggleBookmark(nodeId)
+          break
+      }
+    },
+    [nodeId, name, updateNode, toggleBookmark],
+  )
+
+  const handleUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = () => {
+        addNode({
+          id: generateId(),
+          name: file.name,
+          type: 'file',
+          parentId: nodeId,
+          content: reader.result as string,
+        })
+        setExpanded(nodeId, true)
+      }
+      reader.readAsText(file)
+      e.target.value = ''
+    },
+    [nodeId, addNode, setExpanded],
+  )
+
+  const handleBookmarkClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      toggleBookmark(nodeId)
+    },
+    [nodeId, toggleBookmark],
+  )
+
+  const folderMenuItems: MenuProps['items'] = useMemo(
+    () => [
+      { key: 'newFile', icon: <FileAddOutlined />, label: '新建文件' },
+      { key: 'newFolder', icon: <FolderAddOutlined />, label: '新建文件夹' },
+      { key: 'upload', icon: <UploadOutlined />, label: '上传文件' },
+      { type: 'divider' as const },
+      { key: 'rename', icon: <EditOutlined />, label: '重命名' },
+      {
+        key: 'bookmark',
+        icon: isBookmarked ? <BookFilled /> : <BookOutlined />,
+        label: isBookmarked ? '取消书签' : '添加书签',
+      },
+      { type: 'divider' as const },
+      { key: 'delete', icon: <DeleteOutlined />, label: '删除', danger: true },
+    ],
+    [isBookmarked],
+  )
+
+  const fileMenuItems: MenuProps['items'] = useMemo(
+    () => [
+      { key: 'rename', icon: <EditOutlined />, label: '重命名' },
+      {
+        key: 'bookmark',
+        icon: isBookmarked ? <BookFilled /> : <BookOutlined />,
+        label: isBookmarked ? '取消书签' : '添加书签',
+      },
+    ],
+    [isBookmarked],
+  )
+
+  if (type === 'folder') {
+    return (
+      <span className="ide-tree-node-title">
+        <span className="ide-tree-node-name">{name}</span>
+        <span className="ide-tree-node-actions">
+          <Dropdown
+            menu={{ items: folderMenuItems, onClick: handleFolderMenu }}
+            trigger={['click']}
+          >
+            <span
+              className="ide-tree-action-btn"
+              onClick={(e) => e.stopPropagation()}
+              role="button"
+            >
+              <EllipsisOutlined />
+            </span>
+          </Dropdown>
+        </span>
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: 'none' }}
+          onChange={handleUpload}
+        />
+      </span>
+    )
+  }
+
+  return (
+    <span className="ide-tree-node-title">
+      <span className="ide-tree-node-name">{name}</span>
+      <span className="ide-tree-node-actions">
+        <span
+          className={`ide-tree-action-btn ${isBookmarked ? 'bookmark-active' : ''}`}
+          onClick={handleBookmarkClick}
+          role="button"
+        >
+          {isBookmarked ? <BookFilled /> : <BookOutlined />}
+        </span>
+        <Dropdown
+          menu={{ items: fileMenuItems, onClick: handleFileMenu }}
+          trigger={['click']}
+        >
+          <span
+            className="ide-tree-action-btn"
+            onClick={(e) => e.stopPropagation()}
+            role="button"
+          >
+            <EllipsisOutlined />
+          </span>
+        </Dropdown>
+      </span>
+    </span>
+  )
+})
 
 export default function FileTree() {
   const nodes = useFileTreeStore((s) => s.nodes)
   const getChildren = useFileTreeStore((s) => s.getChildren)
-  const getNode = useFileTreeStore((s) => s.getNode)
   const expandedFolderIds = useFileTreeStore((s) => s.expandedFolderIds)
   const setExpandedIds = useFileTreeStore((s) => s.setExpandedIds)
   const openFile = useFileTreeStore((s) => s.openFile)
-  const hasBookmark = useBookmarksStore((s) => s.has)
-  const toggleBookmark = useBookmarksStore((s) => s.toggle)
-  const [contextNodeId, setContextNodeId] = useState<string | null>(null)
-  const [contextPos, setContextPos] = useState({ x: 0, y: 0 })
 
   const treeData: DataNode[] = useMemo(() => {
     function build(parentId: string | null): DataNode[] {
       const list = getChildren(parentId)
       return list.map((n) => ({
         key: n.id,
-        title: n.name,
+        title: <NodeTitle nodeId={n.id} name={n.name} type={n.type} />,
         isLeaf: n.type === 'file',
         icon:
           n.type === 'folder' ? (
@@ -46,39 +260,13 @@ export default function FileTree() {
     setExpandedIds(keys.map((k) => String(k)))
   }
 
-  const onSelect = (
-    _: React.Key[],
-    info: { node: { key: React.Key } }
-  ) => {
+  const onSelect = (_: React.Key[], info: { node: { key: React.Key } }) => {
     const key = String(info.node.key)
     const node = useFileTreeStore.getState().getNode(key)
     if (node?.type === 'file') openFile(key)
   }
 
-  const onRightClick = (info: { event: React.MouseEvent; node: DataNode }) => {
-    info.event.preventDefault()
-    const key = info.node.key as string
-    const node = getNode(key)
-    if (node?.type === 'file') {
-      setContextNodeId(key)
-      setContextPos({ x: info.event.clientX, y: info.event.clientY })
-    }
-  }
-
-  const handleBookmarkClick = () => {
-    if (contextNodeId) toggleBookmark(contextNodeId)
-    setContextNodeId(null)
-  }
-
-  useEffect(() => {
-    if (!contextNodeId) return
-    const close = () => setContextNodeId(null)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
-  }, [contextNodeId])
-
   return (
-    <>
     <Tree
       className="ide-tree"
       showIcon
@@ -87,34 +275,7 @@ export default function FileTree() {
       onExpand={onExpand}
       treeData={treeData}
       onSelect={onSelect}
-      onRightClick={onRightClick}
-      style={{ padding: '8px 0', background: 'transparent' }}
+      style={{ padding: '8px 0', background: 'var(--ide-tree-bg)', minHeight: '100%' }}
     />
-    {contextNodeId && (
-      <div
-        style={{
-          position: 'fixed',
-          left: contextPos.x,
-          top: contextPos.y,
-          background: 'var(--ide-panel)',
-          border: '1px solid var(--ide-sidebar-border)',
-          borderRadius: 4,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-          zIndex: 1000,
-          padding: '4px 0',
-          minWidth: 120,
-        }}
-      >
-        <div
-          style={{ padding: '8px 12px', cursor: 'pointer', color: 'var(--ide-text)' }}
-          onClick={handleBookmarkClick}
-          role="button"
-          tabIndex={0}
-        >
-          {hasBookmark(contextNodeId) ? '移除书签' : '添加书签'}
-        </div>
-      </div>
-    )}
-    </>
   )
 }

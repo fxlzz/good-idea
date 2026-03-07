@@ -3,7 +3,6 @@ import {
   BookOutlined,
   DeleteOutlined,
   EditOutlined,
-  EllipsisOutlined,
   FileAddOutlined,
   FileOutlined,
   FolderAddOutlined,
@@ -251,7 +250,58 @@ const NodeTitle = memo(function NodeTitle({
 
   if (type === 'folder') {
     return (
-      <span className="ide-tree-node-title">
+      <>
+        <Dropdown
+          getPopupContainer={() => document.body}
+          overlayClassName="ide-tree-dropdown-menu"
+          menu={{ items: folderMenuItems, onClick: handleFolderMenu }}
+          trigger={['contextMenu']}
+        >
+          <span
+            className="ide-tree-node-title"
+            onContextMenu={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+            }}
+          >
+            {renderName()}
+            <span className="ide-tree-node-actions">
+              {isBookmarked && (
+                <span
+                  className="ide-tree-action-btn bookmark-active"
+                  onClick={handleBookmarkClick}
+                  role="button"
+                >
+                  <BookFilled />
+                </span>
+              )}
+            </span>
+          </span>
+        </Dropdown>
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: 'none' }}
+          onChange={handleUpload}
+        />
+      </>
+    )
+  }
+
+  return (
+    <Dropdown
+      getPopupContainer={() => document.body}
+      overlayClassName="ide-tree-dropdown-menu"
+      menu={{ items: fileMenuItems, onClick: handleFileMenu }}
+      trigger={['contextMenu']}
+    >
+      <span
+        className="ide-tree-node-title"
+        onContextMenu={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+      >
         {renderName()}
         <span className="ide-tree-node-actions">
           {isBookmarked && (
@@ -263,60 +313,9 @@ const NodeTitle = memo(function NodeTitle({
               <BookFilled />
             </span>
           )}
-          <Dropdown
-            getPopupContainer={() => document.body}
-            overlayClassName="ide-tree-dropdown-menu"
-            menu={{ items: folderMenuItems, onClick: handleFolderMenu }}
-            trigger={['click']}
-          >
-            <span
-              className="ide-tree-action-btn"
-              onClick={(e) => e.stopPropagation()}
-              role="button"
-            >
-              <EllipsisOutlined />
-            </span>
-          </Dropdown>
         </span>
-        <input
-          ref={fileInputRef}
-          type="file"
-          style={{ display: 'none' }}
-          onChange={handleUpload}
-        />
       </span>
-    )
-  }
-
-  return (
-    <span className="ide-tree-node-title">
-      {renderName()}
-      <span className="ide-tree-node-actions">
-        {isBookmarked && (
-          <span
-            className="ide-tree-action-btn bookmark-active"
-            onClick={handleBookmarkClick}
-            role="button"
-          >
-            <BookFilled />
-          </span>
-        )}
-        <Dropdown
-          getPopupContainer={() => document.body}
-          overlayClassName="ide-tree-dropdown-menu"
-          menu={{ items: fileMenuItems, onClick: handleFileMenu }}
-          trigger={['click']}
-        >
-          <span
-            className="ide-tree-action-btn"
-            onClick={(e) => e.stopPropagation()}
-            role="button"
-          >
-            <EllipsisOutlined />
-          </span>
-        </Dropdown>
-      </span>
-    </span>
+    </Dropdown>
   )
 })
 

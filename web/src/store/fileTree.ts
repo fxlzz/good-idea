@@ -27,6 +27,7 @@ type FileTreeState = {
   activeTabId: string | null
   expandedFolderIds: Set<string>
   sortBy: 'name' | 'updated'
+  syncing: boolean
   addNode: (node: Omit<FileNode, 'createdAt' | 'updatedAt'>) => void
   updateNode: (id: string, patch: Partial<FileNode>) => void
   deleteNode: (id: string) => void
@@ -40,6 +41,7 @@ type FileTreeState = {
   getChildren: (parentId: string | null) => FileNode[]
   getNode: (id: string) => FileNode | undefined
   getRecentFiles: (count: number) => FileNode[]
+  syncFromServer: () => Promise<void>
 }
 
 const STORAGE_KEY = 'good-idea-files'
@@ -53,6 +55,38 @@ function getExt(name: string): string {
   return i > 0 ? name.slice(i) : ''
 }
 
+async function apiPost(path: string, body: unknown) {
+  try {
+    await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    // fail silently, local state is source of truth
+  }
+}
+
+async function apiPut(path: string, body: unknown) {
+  try {
+    await fetch(path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    // fail silently
+  }
+}
+
+async function apiDelete(path: string) {
+  try {
+    await fetch(path, { method: 'DELETE' })
+  } catch {
+    // fail silently
+  }
+}
+
 export const useFileTreeStore = create<FileTreeState>()(
   persist(
     (set, get) => ({
@@ -61,6 +95,7 @@ export const useFileTreeStore = create<FileTreeState>()(
       activeTabId: null,
       expandedFolderIds: new Set<string>(),
       sortBy: 'name',
+      syncing: false,
 
       addNode: (node) => {
         const id = node.id ?? generateId()
@@ -77,6 +112,14 @@ export const useFileTreeStore = create<FileTreeState>()(
         set((s) => ({
           nodes: { ...s.nodes, [id]: full },
         }))
+
+        apiPost('/api/files', {
+          id,
+          name: node.name,
+          type: node.type,
+          parentId: node.parentId ?? null,
+          content: node.content ?? null,
+        })
       },
 
       updateNode: (id, patch) => {
@@ -95,6 +138,8 @@ export const useFileTreeStore = create<FileTreeState>()(
           )
           return { nodes, openTabs }
         })
+
+        apiPut(`/api/files/${id}`, patch)
       },
 
       deleteNode: (id) => {
@@ -116,6 +161,8 @@ export const useFileTreeStore = create<FileTreeState>()(
               : state.activeTabId
           return { nodes, openTabs, activeTabId }
         })
+
+        apiDelete(`/api/files/${id}`)
       },
 
       setExpanded: (id, expanded) => {
@@ -192,6 +239,31 @@ export const useFileTreeStore = create<FileTreeState>()(
         const all = Object.values(get().nodes).filter((n) => n.type === 'file')
         all.sort((a, b) => b.updatedAt - a.updatedAt)
         return all.slice(0, count)
+      },
+
+      syncFromServer: async () => {
+        set({ syncing: true })
+        try {
+          const res = await fetch('/api/files')
+          if (!res.ok) return
+          const { nodes: serverNodes, rootIds } = await res.json()
+          if (serverNodes && Object.keys(serverNodes).length > 0) {
+            set((s) => {
+              const merged = { ...s.nodes }
+              for (const [id, node] of Object.entries(serverNodes) as [string, FileNode][]) {
+                const local = merged[id]
+                if (!local || node.updatedAt > local.updatedAt) {
+                  merged[id] = node
+                }
+              }
+              return { nodes: merged }
+            })
+          }
+        } catch {
+          // server unavailable
+        } finally {
+          set({ syncing: false })
+        }
       },
     }),
     {

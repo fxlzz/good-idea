@@ -1,10 +1,19 @@
 import { Router } from 'express'
 import { supabase, hasSupabase } from '../db.js'
+import { embedFile, removeFileEmbeddings } from './ai.js'
+import { isEmbeddable } from '../services/embedding.js'
 
 const router = Router()
 
-// In-memory fallback when Supabase not configured
 let memoryStore = { nodes: {}, rootIds: [] }
+
+function triggerEmbed(file) {
+  if (file.content && isEmbeddable(file.ext)) {
+    embedFile(file).catch((err) =>
+      console.warn('Auto-embed failed for', file.id, err.message)
+    )
+  }
+}
 
 function getNodes(req, res, next) {
   if (hasSupabase()) {
@@ -42,31 +51,29 @@ router.get('/', getNodes, (req, res) => {
   res.json({ nodes, rootIds })
 })
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { id, name, type, parentId, content } = req.body || {}
   if (!id || !name || !type) {
     return res.status(400).json({ error: 'id, name, type required' })
   }
   const now = new Date().toISOString()
+  const ext = type === 'file' ? (name.includes('.') ? `.${name.split('.').pop()}` : '') : null
   const row = {
     id,
     name,
     type,
     parent_id: parentId ?? null,
     content: content ?? null,
-    ext: type === 'file' ? (name.split('.').pop() || null) : null,
+    ext,
     created_at: now,
     updated_at: now,
   }
 
   if (hasSupabase()) {
-    supabase
-      .from('files')
-      .insert(row)
-      .then(({ error }) => {
-        if (error) return res.status(500).json({ error: error.message })
-        res.status(201).json(row)
-      })
+    const { error } = await supabase.from('files').insert(row)
+    if (error) return res.status(500).json({ error: error.message })
+    res.status(201).json(row)
+    triggerEmbed({ id, name, content, ext })
     return
   }
 
@@ -76,7 +83,7 @@ router.post('/', (req, res) => {
     type,
     parentId: parentId ?? null,
     content,
-    ext: row.ext,
+    ext,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
@@ -84,7 +91,7 @@ router.post('/', (req, res) => {
   res.status(201).json(row)
 })
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const id = req.params.id
   const { name, type, parentId, content } = req.body || {}
   const now = new Date().toISOString()
@@ -95,14 +102,15 @@ router.put('/:id', (req, res) => {
     if (type != null) updates.type = type
     if (parentId !== undefined) updates.parent_id = parentId
     if (content !== undefined) updates.content = content
-    supabase
-      .from('files')
-      .update(updates)
-      .eq('id', id)
-      .then(({ error }) => {
-        if (error) return res.status(500).json({ error: error.message })
-        res.json({ ok: true })
-      })
+
+    const { error } = await supabase.from('files').update(updates).eq('id', id)
+    if (error) return res.status(500).json({ error: error.message })
+    res.json({ ok: true })
+
+    if (content !== undefined) {
+      const { data } = await supabase.from('files').select('id, name, content, ext').eq('id', id).single()
+      if (data) triggerEmbed(data)
+    }
     return
   }
 
@@ -124,26 +132,26 @@ function collectIds(nodes, pid) {
   return ids
 }
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const id = req.params.id
 
   if (hasSupabase()) {
-    supabase
-      .from('files')
-      .select('id, parent_id')
-      .then(({ data, error }) => {
-        if (error) return res.status(500).json({ error: error.message })
-        const nodes = (data || []).reduce((acc, row) => {
-          acc[row.id] = { id: row.id, parentId: row.parent_id }
-          return acc
-        }, {})
-        const toDelete = collectIds(nodes, id)
-        return supabase.from('files').delete().in('id', toDelete)
-      })
-      .then(({ error }) => {
-        if (error) return res.status(500).json({ error: error.message })
-        res.json({ ok: true })
-      })
+    const { data, error } = await supabase.from('files').select('id, parent_id')
+    if (error) return res.status(500).json({ error: error.message })
+
+    const nodes = (data || []).reduce((acc, row) => {
+      acc[row.id] = { id: row.id, parentId: row.parent_id }
+      return acc
+    }, {})
+    const toDelete = collectIds(nodes, id)
+
+    const { error: delErr } = await supabase.from('files').delete().in('id', toDelete)
+    if (delErr) return res.status(500).json({ error: delErr.message })
+    res.json({ ok: true })
+
+    for (const did of toDelete) {
+      removeFileEmbeddings(did).catch(() => {})
+    }
     return
   }
 

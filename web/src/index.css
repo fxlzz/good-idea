@@ -57,16 +57,23 @@ body {
   width: 100%;
   white-space: nowrap; /* icon + filename on one line */
 }
-.ide-tree .ant-tree-treenode-selected {
-  background: var(--ide-tree-selected) !important;
+/* 非选中节点 hover */
+.ide-tree .ant-tree-treenode:not(.ant-tree-treenode-selected):hover {
+  background: #1f1f2a !important;
 }
-.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper {
+.ide-tree .ant-tree-treenode:not(.ant-tree-treenode-selected):hover .ant-tree-node-content-wrapper {
   background: transparent !important;
 }
-.ide-tree .ant-tree-treenode:hover {
-  background: var(--ide-hover) !important;
+/* 选中节点：无论 hover / active，始终 #2d1d52，不变色 */
+.ide-tree .ant-tree-treenode.ant-tree-treenode-selected,
+.ide-tree .ant-tree-treenode.ant-tree-treenode-selected:hover,
+.ide-tree .ant-tree-treenode.ant-tree-treenode-selected.ant-tree-treenode-active,
+.ide-tree .ant-tree-treenode.ant-tree-treenode-selected.ant-tree-treenode-active:hover {
+  background: #2d1d52 !important;
 }
-.ide-tree .ant-tree-treenode:hover .ant-tree-node-content-wrapper {
+.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper,
+.ide-tree .ant-tree-treenode-selected:hover .ant-tree-node-content-wrapper,
+.ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper:hover {
   background: transparent !important;
 }
 .ide-tree .ant-tree-title {

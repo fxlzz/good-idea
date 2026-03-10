@@ -1,10 +1,12 @@
 import { Router } from 'express'
+import { getFilesForEmbedding } from '../data/filesSource.js'
 import { getCollection } from '../services/chroma.js'
 import {
   getEmbedding,
   embedAllFiles,
   embedFile,
   removeFileEmbeddings,
+  isEmbeddable,
 } from '../services/embedding.js'
 
 const router = Router()
@@ -63,6 +65,8 @@ router.post('/chat', async (req, res) => {
       console.warn('RAG retrieval failed, falling back to direct chat:', ragErr.message)
     }
 
+    const ragUsed = context.length > 0
+
     const systemContent = context
       ? SYSTEM_PROMPT_TEMPLATE.replace('{context}', context)
       : '你是一个 AI 助手，请尽力回答用户的问题。'
@@ -97,13 +101,18 @@ router.post('/chat', async (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream')
     res.setHeader('Cache-Control', 'no-cache')
     res.setHeader('Connection', 'keep-alive')
+    res.flushHeaders()
 
     if (sources.length > 0) {
       const uniqueSources = [...new Set(sources)]
       res.write(`__SOURCES__${JSON.stringify(uniqueSources)}__END_SOURCES__`)
     }
-
-    res.flushHeaders()
+    if (!ragUsed) {
+      const reason = '知识库未就绪或未检索到相关内容。请先点击「建立知识索引」，并确保 ChromaDB 已启动。'
+      res.write(`__RAG_STATUS__${JSON.stringify({ used: false, reason })}__END_RAG_STATUS__`)
+    } else {
+      res.write(`__RAG_STATUS__${JSON.stringify({ used: true })}__END_RAG_STATUS__`)
+    }
 
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
@@ -139,7 +148,7 @@ router.post('/chat', async (req, res) => {
   }
 })
 
-router.post('/embed-all', async (_req, res) => {
+router.post('/embed-all', async (req, res) => {
   if (embedStatus.running) {
     return res.status(409).json({ error: 'Embedding already in progress', status: embedStatus })
   }
@@ -148,7 +157,16 @@ router.post('/embed-all', async (_req, res) => {
   res.json({ message: 'Embedding started', status: embedStatus })
 
   try {
-    const result = await embedAllFiles()
+    let files = req.body?.files
+    if (Array.isArray(files) && files.length > 0) {
+      const withExt = (f) => (f.ext != null ? f.ext : f.name && f.name.includes('.') ? `.${f.name.split('.').pop()}` : '')
+      files = files
+        .filter((f) => f && f.id && f.name != null && (f.content ?? '').trim() && isEmbeddable(withExt(f)))
+        .map((f) => ({ id: f.id, name: f.name, content: String(f.content ?? '').trim(), ext: withExt(f) }))
+    } else {
+      files = await getFilesForEmbedding()
+    }
+    const result = await embedAllFiles(files)
     embedStatus = { running: false, lastResult: result, lastError: null }
     console.log('Embed all completed:', result)
   } catch (e) {

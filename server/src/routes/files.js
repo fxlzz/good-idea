@@ -1,11 +1,10 @@
 import { Router } from 'express'
+import { memoryStore } from '../data/filesSource.js'
 import { supabase, hasSupabase } from '../db.js'
 import { embedFile, removeFileEmbeddings } from './ai.js'
 import { isEmbeddable } from '../services/embedding.js'
 
 const router = Router()
-
-let memoryStore = { nodes: {}, rootIds: [] }
 
 function triggerEmbed(file) {
   if (file.content && isEmbeddable(file.ext)) {
@@ -89,6 +88,7 @@ router.post('/', async (req, res) => {
   }
   if (!parentId) memoryStore.rootIds.push(id)
   res.status(201).json(row)
+  triggerEmbed({ id, name, content, ext })
 })
 
 router.put('/:id', async (req, res) => {
@@ -122,6 +122,7 @@ router.put('/:id', async (req, res) => {
   if (content !== undefined) n.content = content
   n.updatedAt = Date.now()
   res.json({ ok: true })
+  if (content !== undefined) triggerEmbed({ id: n.id, name: n.name, content: n.content, ext: n.ext })
 })
 
 function collectIds(nodes, pid) {

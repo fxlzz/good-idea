@@ -1,12 +1,23 @@
 import { Button, Input, List, Tag, Tooltip, message } from 'antd'
 import { DatabaseOutlined, SyncOutlined } from '@ant-design/icons'
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useFileTreeStore } from '../store/fileTree'
+
+const EMBEDDABLE_EXTS = new Set(['.md', '.txt', ''])
+function getExt(name: string): string {
+  const i = name.lastIndexOf('.')
+  return i > 0 ? name.slice(i) : ''
+}
+function isEmbeddable(ext: string): boolean {
+  return EMBEDDABLE_EXTS.has(ext)
+}
 
 type Message = {
   id: string
   role: 'user' | 'assistant'
   content: string
   sources?: string[]
+  ragStatus?: { used: boolean; reason?: string }
 }
 
 type AIPanelProps = {
@@ -54,9 +65,18 @@ export default function AIPanel({ open }: AIPanelProps) {
     return () => clearInterval(timer)
   }, [open, fetchEmbedStatus])
 
+  const nodes = useFileTreeStore((s) => s.nodes)
+
   const startEmbedding = async () => {
     try {
-      const res = await fetch('/api/ai/embed-all', { method: 'POST' })
+      const fileList = Object.values(nodes)
+        .filter((n) => n.type === 'file' && (n.content ?? '').trim() && isEmbeddable(getExt(n.name)))
+        .map((n) => ({ id: n.id, name: n.name, content: (n.content ?? '').trim(), ext: n.ext ?? getExt(n.name) }))
+      const res = await fetch('/api/ai/embed-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: fileList }),
+      })
       if (res.ok) {
         message.success('知识索引已启动')
         setEmbedStatus((s) => ({ ...s, running: true }))
@@ -78,7 +98,7 @@ export default function AIPanel({ open }: AIPanelProps) {
     setLoading(true)
 
     const assistantId = `a_${Date.now()}`
-    setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '', sources: [] }])
+    setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '', sources: [], ragStatus: undefined }])
 
     try {
       const res = await fetch('/api/ai/chat', {
@@ -108,6 +128,7 @@ export default function AIPanel({ open }: AIPanelProps) {
       }
       let content = ''
       let sources: string[] = []
+      let ragStatus: { used: boolean; reason?: string } | undefined
 
       while (true) {
         const { done, value } = await reader.read()
@@ -124,8 +145,20 @@ export default function AIPanel({ open }: AIPanelProps) {
           content = content.replace(/__SOURCES__.+?__END_SOURCES__/, '')
         }
 
+        const ragMatch = content.match(/__RAG_STATUS__(.+?)__END_RAG_STATUS__/)
+        if (ragMatch) {
+          try {
+            ragStatus = JSON.parse(ragMatch[1])
+          } catch {
+            // ignore
+          }
+          content = content.replace(/__RAG_STATUS__.+?__END_RAG_STATUS__/, '')
+        }
+
         setMessages((m) =>
-          m.map((msg) => (msg.id === assistantId ? { ...msg, content, sources } : msg))
+          m.map((msg) =>
+            msg.id === assistantId ? { ...msg, content, sources, ragStatus } : msg
+          )
         )
       }
     } catch (e) {
@@ -225,6 +258,13 @@ export default function AIPanel({ open }: AIPanelProps) {
                     </Tag>
                   ))}
                 </div>
+              )}
+              {item.role === 'assistant' && item.ragStatus?.used === false && (
+                <Tooltip title={item.ragStatus.reason}>
+                  <Tag color="orange" style={{ marginTop: 4, fontSize: 11 }}>
+                    未使用知识库
+                  </Tag>
+                </Tooltip>
               )}
             </List.Item>
           )}

@@ -1,5 +1,4 @@
 import { getCollection } from './chroma.js'
-import { supabase, hasSupabase } from '../db.js'
 
 function getApiKey() {
   return process.env.DASHSCOPE_API_KEY
@@ -125,21 +124,13 @@ export async function removeFileEmbeddings(fileId) {
   }
 }
 
-export async function embedAllFiles() {
-  if (!hasSupabase()) {
-    throw new Error('Supabase not configured, cannot read files')
+/**
+ * Embed all given files into ChromaDB. Caller should get files via getFilesForEmbedding().
+ */
+export async function embedAllFiles(files) {
+  if (!Array.isArray(files)) {
+    throw new Error('embedAllFiles requires a files array from getFilesForEmbedding()')
   }
-
-  const { data, error } = await supabase
-    .from('files')
-    .select('id, name, type, content, ext')
-    .eq('type', 'file')
-
-  if (error) throw new Error(`Failed to read files: ${error.message}`)
-
-  const files = (data || []).filter(
-    (f) => f.content && isEmbeddable(f.ext)
-  )
 
   let totalChunks = 0
   let processedFiles = 0

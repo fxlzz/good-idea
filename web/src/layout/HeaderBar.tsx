@@ -9,15 +9,16 @@ import {
 import { Avatar, Badge, Dropdown, Layout, Space, Tooltip } from 'antd'
 import { useEffect, useState } from 'react'
 import type { MenuProps } from 'antd'
+import { useNavigate } from 'react-router-dom'
 import { useBookmarksStore } from '../store/bookmarks'
 import { useFileTreeStore } from '../store/fileTree'
+import { useAuthStore } from '../store/auth'
 import AllArticlesModal from './AllArticlesModal'
 import SearchModal from './SearchModal'
 
 const { Header } = Layout
 
 const HEALTH_POLL_INTERVAL = 10_000
-const USER_NAME = 'admin'
 
 type HeaderBarProps = {
   onToggleAI: () => void
@@ -25,10 +26,13 @@ type HeaderBarProps = {
 }
 
 export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
+  const navigate = useNavigate()
   const [allArticlesOpen, setAllArticlesOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null)
 
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
   const nodeIds = useBookmarksStore((s) => s.nodeIds)
   const getNode = useFileTreeStore((s) => s.getNode)
   const openFile = useFileTreeStore((s) => s.openFile)
@@ -53,7 +57,8 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
     return () => clearInterval(id)
   }, [])
 
-  const firstLetter = USER_NAME.charAt(0).toUpperCase()
+  const userName = user?.username || '未登录'
+  const firstLetter = userName.charAt(0).toUpperCase()
 
   const userMenuItems: MenuProps['items'] = [
     { key: 'settings', label: '设置' },
@@ -65,7 +70,14 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
       disabled: true,
     },
     { type: 'divider' },
-    { key: 'logout', label: '登出' },
+    {
+      key: 'logout',
+      label: '登出',
+      onClick: () => {
+        logout()
+        navigate('/login', { replace: true })
+      },
+    },
   ]
 
   const iconStyle = { fontSize: 16, color: 'var(--ide-text-muted)' }
@@ -225,7 +237,7 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
             >
               {firstLetter}
             </Avatar>
-            <span style={{ fontSize: 13 }}>{USER_NAME}</span>
+            <span style={{ fontSize: 13 }}>{userName}</span>
             <DownOutlined style={{ fontSize: 10, color: 'var(--ide-text-muted)' }} />
           </Space>
         </Dropdown>

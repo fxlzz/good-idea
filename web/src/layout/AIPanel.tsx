@@ -2,6 +2,7 @@ import { Button, Input, List, Tag, Tooltip, message } from 'antd'
 import { DatabaseOutlined, SyncOutlined } from '@ant-design/icons'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useFileTreeStore } from '../store/fileTree'
+import { apiFetch } from '../lib/api'
 
 const EMBEDDABLE_EXTS = new Set(['.md', '.txt', ''])
 function getExt(name: string): string {
@@ -48,7 +49,7 @@ export default function AIPanel({ open }: AIPanelProps) {
 
   const fetchEmbedStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/ai/embed-status')
+      const res = await apiFetch('/api/ai/embed-status')
       if (res.ok) {
         const data = await res.json()
         setEmbedStatus(data)
@@ -72,7 +73,7 @@ export default function AIPanel({ open }: AIPanelProps) {
       const fileList = Object.values(nodes)
         .filter((n) => n.type === 'file' && (n.content ?? '').trim() && isEmbeddable(getExt(n.name)))
         .map((n) => ({ id: n.id, name: n.name, content: (n.content ?? '').trim(), ext: n.ext ?? getExt(n.name) }))
-      const res = await fetch('/api/ai/embed-all', {
+      const res = await apiFetch('/api/ai/embed-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ files: fileList }),
@@ -101,7 +102,7 @@ export default function AIPanel({ open }: AIPanelProps) {
     setMessages((m) => [...m, { id: assistantId, role: 'assistant', content: '', sources: [], ragStatus: undefined }])
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await apiFetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

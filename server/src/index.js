@@ -6,6 +6,8 @@ import { WebSocketServer } from 'ws'
 import pty from 'node-pty'
 import filesRouter from './routes/files.js'
 import aiRouter from './routes/ai.js'
+import authRouter from './routes/auth.js'
+import { requireAuth } from './middleware/auth.js'
 
 dotenv.config()
 
@@ -20,8 +22,9 @@ app.get('/api/health', (_, res) => {
   res.json({ ok: true })
 })
 
-app.use('/api/files', filesRouter)
-app.use('/api/ai', aiRouter)
+app.use('/api/auth', authRouter)
+app.use('/api/files', requireAuth, filesRouter)
+app.use('/api/ai', requireAuth, aiRouter)
 
 // WebSocket for terminal
 const wss = new WebSocketServer({ server, path: '/ws/terminal' })

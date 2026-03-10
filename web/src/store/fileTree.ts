@@ -247,7 +247,7 @@ export const useFileTreeStore = create<FileTreeState>()(
         try {
           const res = await apiFetch('/api/files')
           if (!res.ok) return
-          const { nodes: serverNodes, rootIds } = await res.json()
+          const { nodes: serverNodes } = await res.json()
           if (serverNodes && Object.keys(serverNodes).length > 0) {
             set((s) => {
               const merged = { ...s.nodes }

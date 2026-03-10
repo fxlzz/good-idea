@@ -1,8 +1,10 @@
 import { FileTextOutlined, SearchOutlined } from "@ant-design/icons";
 import { Input, List, Modal } from "antd";
+import type { InputRef } from "antd";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useBookmarksStore } from "../store/bookmarks";
 import { useFileTreeStore } from "../store/fileTree";
+import type { FileNode } from "../store/fileTree";
 
 type SearchModalProps = {
   open: boolean;
@@ -17,7 +19,7 @@ function formatDate(ts: number) {
 export default function SearchModal({ open, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<InputRef>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const nodes = useFileTreeStore((s) => s.nodes);
@@ -29,7 +31,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   const recentFiles = useMemo(() => {
     const ids = new Set(openTabs.map((t) => t.nodeId));
     const list = openTabs
-      .map((t) => getNode(t.nodeId))
+      .map((t) => t.nodeId)
+      .filter((id): id is string => !!id)
+      .map((id) => getNode(id))
       .filter((n): n is NonNullable<typeof n> => !!n && n.type === "file");
     const rest = Object.values(nodes)
       .filter((n) => n.type === "file" && !ids.has(n.id))
@@ -37,7 +41,9 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     return [...list, ...rest].slice(0, 20);
   }, [nodes, openTabs, getNode]);
 
-  const searchResults = useMemo(() => {
+  type SearchItem = FileNode & { match: "recent" | "name" };
+
+  const searchResults: SearchItem[] = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return recentFiles.map((n) => ({ ...n, match: "recent" as const }));
     return Object.values(nodes)
@@ -134,7 +140,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
           最近访问
         </div>
         <div ref={listRef} style={{ maxHeight: 320, overflow: "auto" }}>
-          <List
+          <List<SearchItem>
             dataSource={searchResults}
             rowKey="id"
             renderItem={(n, index) => {

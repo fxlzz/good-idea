@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { apiFetch } from '../lib/api'
 
 export type FileNode = {
   id: string
@@ -57,7 +58,7 @@ function getExt(name: string): string {
 
 async function apiPost(path: string, body: unknown) {
   try {
-    await fetch(path, {
+    await apiFetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -69,7 +70,7 @@ async function apiPost(path: string, body: unknown) {
 
 async function apiPut(path: string, body: unknown) {
   try {
-    await fetch(path, {
+    await apiFetch(path, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -81,7 +82,7 @@ async function apiPut(path: string, body: unknown) {
 
 async function apiDelete(path: string) {
   try {
-    await fetch(path, { method: 'DELETE' })
+    await apiFetch(path, { method: 'DELETE' })
   } catch {
     // fail silently
   }
@@ -244,7 +245,7 @@ export const useFileTreeStore = create<FileTreeState>()(
       syncFromServer: async () => {
         set({ syncing: true })
         try {
-          const res = await fetch('/api/files')
+          const res = await apiFetch('/api/files')
           if (!res.ok) return
           const { nodes: serverNodes, rootIds } = await res.json()
           if (serverNodes && Object.keys(serverNodes).length > 0) {

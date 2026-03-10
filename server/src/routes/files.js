@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { memoryStore } from '../data/filesSource.js'
-import { supabase, hasSupabase } from '../db.js'
+import { supabase, hasSupabase, getSqlite } from '../db.js'
 import { embedFile, removeFileEmbeddings } from './ai.js'
 import { isEmbeddable } from '../services/embedding.js'
 
@@ -41,7 +41,28 @@ function getNodes(req, res, next) {
       })
     return
   }
-  req.filesData = memoryStore
+
+  const db = getSqlite()
+  const rows = db.prepare('SELECT * FROM files').all()
+
+  const nodes = {}
+  const rootIds = []
+
+  for (const row of rows) {
+    nodes[row.id] = {
+      id: row.id,
+      name: row.name,
+      type: row.type,
+      parentId: row.parent_id,
+      content: row.content ?? undefined,
+      ext: row.ext,
+      createdAt: new Date(row.created_at).getTime(),
+      updatedAt: new Date(row.updated_at).getTime(),
+    }
+    if (!row.parent_id) rootIds.push(row.id)
+  }
+
+  req.filesData = { nodes, rootIds }
   next()
 }
 
@@ -76,19 +97,19 @@ router.post('/', async (req, res) => {
     return
   }
 
-  memoryStore.nodes[id] = {
-    id,
-    name,
-    type,
-    parentId: parentId ?? null,
-    content,
-    ext,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+  try {
+    const db = getSqlite()
+    db
+      .prepare(
+        `INSERT INTO files (id, name, type, parent_id, content, ext, created_at, updated_at)
+         VALUES (@id, @name, @type, @parent_id, @content, @ext, @created_at, @updated_at)`
+      )
+      .run(row)
+    res.status(201).json(row)
+    triggerEmbed({ id, name, content, ext })
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) })
   }
-  if (!parentId) memoryStore.rootIds.push(id)
-  res.status(201).json(row)
-  triggerEmbed({ id, name, content, ext })
 })
 
 router.put('/:id', async (req, res) => {
@@ -114,15 +135,45 @@ router.put('/:id', async (req, res) => {
     return
   }
 
-  const n = memoryStore.nodes[id]
-  if (!n) return res.status(404).json({ error: 'not found' })
-  if (name != null) n.name = name
-  if (type != null) n.type = type
-  if (parentId !== undefined) n.parentId = parentId
-  if (content !== undefined) n.content = content
-  n.updatedAt = Date.now()
+  const db = getSqlite()
+
+  const existing = db.prepare('SELECT * FROM files WHERE id = ?').get(id)
+  if (!existing) return res.status(404).json({ error: 'not found' })
+
+  const updated = {
+    ...existing,
+    name: name != null ? name : existing.name,
+    type: type != null ? type : existing.type,
+    parent_id: parentId !== undefined ? parentId : existing.parent_id,
+    content: content !== undefined ? content : existing.content,
+    updated_at: new Date().toISOString(),
+  }
+
+  try {
+    db
+      .prepare(
+        `UPDATE files
+         SET name = @name,
+             type = @type,
+             parent_id = @parent_id,
+             content = @content,
+             updated_at = @updated_at
+         WHERE id = @id`
+      )
+      .run(updated)
+  } catch (e) {
+    return res.status(500).json({ error: String(e.message || e) })
+  }
+
   res.json({ ok: true })
-  if (content !== undefined) triggerEmbed({ id: n.id, name: n.name, content: n.content, ext: n.ext })
+  if (content !== undefined) {
+    triggerEmbed({
+      id: updated.id,
+      name: updated.name,
+      content: updated.content,
+      ext: updated.ext,
+    })
+  }
 })
 
 function collectIds(nodes, pid) {
@@ -156,9 +207,28 @@ router.delete('/:id', async (req, res) => {
     return
   }
 
-  const toDelete = collectIds(memoryStore.nodes, id)
-  toDelete.forEach((rid) => delete memoryStore.nodes[rid])
-  memoryStore.rootIds = memoryStore.rootIds.filter((x) => !toDelete.includes(x))
+  const db = getSqlite()
+  const rows = db.prepare('SELECT id, parent_id FROM files').all()
+  const nodes = rows.reduce((acc, row) => {
+    acc[row.id] = { id: row.id, parentId: row.parent_id }
+    return acc
+  }, {})
+
+  const toDelete = collectIds(nodes, id)
+
+  const stmt = db.prepare('DELETE FROM files WHERE id = ?')
+  const transaction = db.transaction((ids) => {
+    for (const rid of ids) {
+      stmt.run(rid)
+    }
+  })
+
+  try {
+    transaction(toDelete)
+  } catch (e) {
+    return res.status(500).json({ error: String(e.message || e) })
+  }
+
   res.json({ ok: true })
 })
 

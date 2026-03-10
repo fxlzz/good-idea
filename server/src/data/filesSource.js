@@ -2,7 +2,7 @@
  * Single source of file list for RAG embedding.
  * When Supabase is configured, reads from Supabase; otherwise uses in-memory store.
  */
-import { supabase, hasSupabase } from '../db.js'
+import { supabase, hasSupabase, getSqlite } from '../db.js'
 import { isEmbeddable } from '../services/embedding.js'
 
 export const memoryStore = { nodes: {}, rootIds: [] }
@@ -20,13 +20,20 @@ export async function getFilesForEmbedding() {
     if (error) throw new Error(`Failed to read files: ${error.message}`)
     return (data || []).filter((f) => f.content && isEmbeddable(f.ext))
   }
-  const list = Object.values(memoryStore.nodes)
-    .filter((n) => n.type === 'file')
-    .map((n) => ({
-      id: n.id,
-      name: n.name,
-      content: n.content ?? '',
-      ext: n.ext,
-    }))
+
+  const db = getSqlite()
+  const rows = db
+    .prepare(
+      "SELECT id, name, type, content, ext FROM files WHERE type = 'file'"
+    )
+    .all()
+
+  const list = rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    content: row.content ?? '',
+    ext: row.ext,
+  }))
+
   return list.filter((f) => f.content && isEmbeddable(f.ext))
 }

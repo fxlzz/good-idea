@@ -1,12 +1,22 @@
 import Database from 'better-sqlite3'
+import fs from 'fs'
+import path from 'path'
 
-const DEFAULT_DB_PATH = process.env.SQLITE_PATH || '/data/app.db'
+const DEFAULT_DB_PATH = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'app.db')
 
 let db
+
+function ensureDir(filePath) {
+  const dir = path.dirname(filePath)
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+}
 
 export function getDb() {
   if (db) return db
 
+  ensureDir(DEFAULT_DB_PATH)
   db = new Database(DEFAULT_DB_PATH)
 
   db.pragma('journal_mode = WAL')

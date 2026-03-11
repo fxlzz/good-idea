@@ -62,26 +62,38 @@ export async function getEmbeddings(texts) {
   const apiKey = getApiKey()
   if (!apiKey) throw new Error('DASHSCOPE_API_KEY not configured')
 
-  const res = await fetch(`${getBaseUrl()}/embeddings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'text-embedding-v3',
-      input: texts,
-      dimensions: 1024,
-    }),
-  })
+  const items = Array.isArray(texts) ? texts : [texts]
+  const MAX_BATCH = 10
+  const allEmbeddings = []
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Embedding API error: ${res.status} ${err}`)
+  for (let i = 0; i < items.length; i += MAX_BATCH) {
+    const batch = items.slice(i, i + MAX_BATCH)
+
+    const res = await fetch(`${getBaseUrl()}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-v3',
+        input: batch,
+        dimensions: 1024,
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`Embedding API error: ${res.status} ${err}`)
+    }
+
+    const data = await res.json()
+    for (const d of data.data) {
+      allEmbeddings.push(d.embedding)
+    }
   }
 
-  const data = await res.json()
-  return data.data.map((d) => d.embedding)
+  return allEmbeddings
 }
 
 export async function embedFile(file) {

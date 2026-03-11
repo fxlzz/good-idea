@@ -19,7 +19,14 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       setAuth: (token, user) => set({ token, user }),
-      logout: () => set({ token: null, user: null }),
+      logout: () => {
+        try {
+          localStorage.removeItem('good-idea-files')
+        } catch {
+          // ignore localStorage access errors
+        }
+        set({ token: null, user: null })
+      },
     }),
     {
       name: 'good-idea-auth',

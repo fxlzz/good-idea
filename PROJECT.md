@@ -106,6 +106,8 @@ good-idea/
 |------|------|------|
 | `PORT` | 否 | 服务端口，默认 `3001` |
 | `SQLITE_PATH` | 否 | SQLite 数据库文件路径，默认 `/data/app.db` |
+| `JWT_SECRET` | 认证必填 | JWT 签名密钥，未配置时 `/api/auth/*` 会不可用 |
+| `JWT_EXPIRES_IN` | 否 | JWT 过期时间，默认 `7d` |
 | `SUPABASE_URL` | 否 | Supabase 项目 URL；如配置则可继续使用 Supabase |
 | `SUPABASE_ANON_KEY` | 否 | Supabase 匿名密钥 |
 | `DASHSCOPE_API_KEY` | RAG/对话需 | 阿里云 DashScope API Key |
@@ -167,12 +169,24 @@ cd web && npm run dev
 
 - `GET /api/health` → `{ "ok": true }`
 
+### 认证 (auth)
+
+- `POST /api/auth/login` 用户名 + 密码登录（首次登录会自动创建账号）
+- `GET /api/auth/me` 获取当前登录用户信息
+- 说明：
+  - 用户名在服务端统一做 `trim + lower-case` 规范化
+  - 用户名为唯一标识（大小写不敏感），重复会返回冲突错误
+  - `/api/files` 与 `/api/ai` 均要求 Bearer Token
+
 ### 文件 (files)
 
 - `GET /api/files` → `{ nodes, rootIds }` 文件树
 - `POST /api/files` 创建文件/文件夹（body: id, name, type, parentId?, content?）
 - `PUT /api/files/:id` 更新
 - `DELETE /api/files/:id` 删除（若用 Supabase 会级联；并会删除对应 embedding）
+- 说明：
+  - 文件数据已按 `user_id` 隔离；每个用户只可访问自己的文件系统
+  - 删除子树仅在当前用户作用域内递归计算，避免跨用户越权
 
 ### AI / RAG (ai)
 
@@ -181,6 +195,9 @@ cd web && npm run dev
   - 先查 Chroma 取相关片段，再调用大模型，流式返回
 - `POST /api/ai/embed-all` 全量重新 embedding（依赖 Chroma + DASHSCOPE_API_KEY）
 - 其他与 embed 状态、单文件 embed 等相关的接口见 `server/src/routes/ai.js`
+- 说明：
+  - 向量 metadata 记录 `userId`，检索与删除均按用户过滤
+  - 同名/同 id 文件在不同用户间不会互相污染 embedding
 
 ### WebSocket
 
@@ -193,17 +210,27 @@ cd web && npm run dev
 表 `files`（见 `server/supabase-schema.sql`，SQLite 与 Supabase 复用同一结构）：
 
 - `id` (text, PK)
+- `user_id` (uuid/text, NOT NULL) 归属用户
 - `name`, `type` ('file' | 'folder')
 - `parent_id` (FK → files.id, ON DELETE CASCADE)
 - `content`, `ext`
 - `created_at`, `updated_at` (timestamptz)
-- 索引：`files_parent_id`
+- 索引：`files_parent_id`、`files_user_id`、`files_user_parent_id`
+
+用户表 `users`（见 `server/supabase-auth-schema.sql`）：
+
+- `id` (uuid, PK)
+- `username` (text, UNIQUE，大小写归一化后唯一)
+- `password_hash`
+- `created_at`, `updated_at`
 
 ---
 
 ## 七、前端功能要点
 
 - **文件树**：左侧可收缩侧栏，支持文件/文件夹的增删改与选中，与后端 `/api/files` 同步。
+- **同步策略**：前端文件树改为“服务端权威”；本地缓存仅用于加速渲染，请求失败会自动回拉服务端状态收敛。
+- **账号切换隔离**：登录成功/退出登录会清理 `good-idea-files` 本地缓存，避免不同账号串缓存。
 - **多 Tab**：已打开文件用 Tab 管理，可切换、关闭。
 - **多格式预览**：Markdown、PDF、Word(docx)、Excel(xlsx) 等有对应 Viewer 组件。
 - **全局搜索**：SearchModal 等，可与后端检索或本地过滤结合（具体以代码为准）。

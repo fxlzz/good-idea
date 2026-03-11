@@ -10,9 +10,13 @@ services:
     restart: unless-stopped
 
   server:
-    build: ./server
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     ports:
       - "3001:3001"
+    volumes:
+      - server_data:/data
     environment:
       - PORT=3001
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
@@ -20,6 +24,7 @@ services:
       - CHROMA_URL=http://chroma:8000
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SQLITE_PATH=/data/app.db
     depends_on:
       - chroma
     restart: unless-stopped
@@ -34,3 +39,4 @@ services:
 
 volumes:
   chroma_data:
+  server_data:

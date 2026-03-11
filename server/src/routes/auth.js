@@ -2,19 +2,24 @@ import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { randomUUID } from 'crypto'
-import { createUser, findUserByUsername } from '../services/users.js'
+import { createUser, findUserByUsername, normalizeUsername } from '../services/users.js'
 import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
-
-function normalizeUsername(username) {
-  return String(username || '').trim()
-}
 
 function getJwtConfig() {
   const secret = process.env.JWT_SECRET
   const expiresIn = process.env.JWT_EXPIRES_IN || '7d'
   return { secret, expiresIn }
+}
+
+function isUniqueConstraintError(message) {
+  const text = String(message || '').toLowerCase()
+  return (
+    text.includes('duplicate key value') ||
+    text.includes('unique constraint') ||
+    text.includes('already exists')
+  )
 }
 
 router.post('/login', async (req, res) => {
@@ -33,7 +38,14 @@ router.post('/login', async (req, res) => {
     if (!existing) {
       const password_hash = await bcrypt.hash(password, 10)
       const id = randomUUID()
-      user = await createUser({ id, username, password_hash })
+      try {
+        user = await createUser({ id, username, password_hash })
+      } catch (createErr) {
+        if (isUniqueConstraintError(createErr?.message)) {
+          return res.status(409).json({ error: '用户名已存在，请直接登录' })
+        }
+        throw createErr
+      }
     } else {
       const ok = await bcrypt.compare(password, existing.password_hash)
       if (!ok) return res.status(401).json({ error: 'invalid credentials' })

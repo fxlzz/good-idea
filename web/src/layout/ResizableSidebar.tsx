@@ -1,12 +1,6 @@
-import {
-  DownloadOutlined,
-  FileAddOutlined,
-  FolderAddOutlined,
-  ReloadOutlined,
-  SortAscendingOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
-import { Dropdown, Layout, Tooltip } from "antd";
+import type React from "react";
+import { FileAddOutlined, FolderAddOutlined } from "@ant-design/icons";
+import { Layout, Tooltip } from "antd";
 import { useEffect, useRef, useState } from "react";
 import FileTree from "../components/FileTree";
 import { useFileTreeStore } from "../store/fileTree";
@@ -29,8 +23,6 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const startX = useRef(0);
   const startW = useRef(0);
   const addNode = useFileTreeStore((s) => s.addNode);
-  const setSortBy = useFileTreeStore((s) => s.setSortBy);
-  const sortBy = useFileTreeStore((s) => s.sortBy);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();

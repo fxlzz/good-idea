@@ -19,6 +19,23 @@
   --ide-tree-selected: #2d1d52;
 }
 
+:root[data-theme='light'] {
+  --ide-bg: #f0f2f5;
+  --ide-header: #ffffff;
+  --ide-sidebar: #ffffff;
+  --ide-tree-bg: #ffffff;
+  --ide-sidebar-border: #f0f0f0;
+  --ide-panel: #ffffff;
+  --ide-tab-bg: #fafafa;
+  --ide-tab-active: #1677ff;
+  --ide-tab-active-bg: #e6f4ff;
+  --ide-text: #000000d9;
+  --ide-text-muted: #00000073;
+  --ide-accent: #1677ff;
+  --ide-hover: #f5f5f5;
+  --ide-tree-selected: #e6f4ff;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -59,7 +76,7 @@ body {
 }
 /* 非选中节点 hover */
 .ide-tree .ant-tree-treenode:not(.ant-tree-treenode-selected):hover {
-  background: #1f1f2a !important;
+  background: var(--ide-hover) !important;
 }
 .ide-tree .ant-tree-treenode:not(.ant-tree-treenode-selected):hover .ant-tree-node-content-wrapper {
   background: transparent !important;
@@ -69,7 +86,7 @@ body {
 .ide-tree .ant-tree-treenode.ant-tree-treenode-selected:hover,
 .ide-tree .ant-tree-treenode.ant-tree-treenode-selected.ant-tree-treenode-active,
 .ide-tree .ant-tree-treenode.ant-tree-treenode-selected.ant-tree-treenode-active:hover {
-  background: #2d1d52 !important;
+  background: var(--ide-tree-selected) !important;
 }
 .ide-tree .ant-tree-treenode-selected .ant-tree-node-content-wrapper,
 .ide-tree .ant-tree-treenode-selected:hover .ant-tree-node-content-wrapper,

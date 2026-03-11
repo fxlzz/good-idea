@@ -5,6 +5,7 @@ import {
   FolderOutlined,
   RobotOutlined,
   SearchOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import { Avatar, Badge, Dropdown, Layout, Space, Tooltip } from 'antd'
 import { useEffect, useState } from 'react'
@@ -15,6 +16,7 @@ import { useFileTreeStore } from '../store/fileTree'
 import { useAuthStore } from '../store/auth'
 import AllArticlesModal from './AllArticlesModal'
 import SearchModal from './SearchModal'
+import SettingsModal from './SettingsModal'
 
 const { Header } = Layout
 
@@ -29,6 +31,7 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
   const navigate = useNavigate()
   const [allArticlesOpen, setAllArticlesOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [apiHealthy, setApiHealthy] = useState<boolean | null>(null)
 
   const user = useAuthStore((s) => s.user)
@@ -61,7 +64,7 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
   const firstLetter = userName.charAt(0).toUpperCase()
 
   const userMenuItems: MenuProps['items'] = [
-    { key: 'settings', label: '设置' },
+    { key: 'settings', label: '设置', onClick: () => setSettingsOpen(true) },
     { key: 'ai', label: aiOpen ? '关闭 AI 助手' : 'AI 助手', onClick: onToggleAI },
     {
       key: 'status',
@@ -202,6 +205,17 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
             <RobotOutlined style={iconStyle} />
           </span>
         </Tooltip>
+        <Tooltip title="设置">
+          <span
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => setSettingsOpen(true)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setSettingsOpen(true)}
+          >
+            <SettingOutlined style={iconStyle} />
+          </span>
+        </Tooltip>
         <Tooltip
           title={
             apiHealthy === true ? '后端在线' : apiHealthy === false ? '后端离线' : '检查中…'
@@ -245,6 +259,7 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
 
       <AllArticlesModal open={allArticlesOpen} onClose={() => setAllArticlesOpen(false)} />
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </Header>
   )
 }

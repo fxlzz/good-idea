@@ -29,6 +29,7 @@ const SYSTEM_PROMPT_TEMPLATE = `你是一个知识库助手。根据以下检索
 let embedStatus = { running: false, lastResult: null, lastError: null }
 
 router.post('/chat', async (req, res) => {
+  const userId = req.user.id
   const { message, history = [] } = req.body || {}
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message required' })
@@ -48,6 +49,7 @@ router.post('/chat', async (req, res) => {
       const results = await col.query({
         queryEmbeddings: [queryEmbedding],
         nResults: 5,
+        where: { userId },
       })
 
       if (results.documents?.[0]?.length > 0) {
@@ -149,6 +151,7 @@ router.post('/chat', async (req, res) => {
 })
 
 router.post('/embed-all', async (req, res) => {
+  const userId = req.user.id
   if (embedStatus.running) {
     return res.status(409).json({ error: 'Embedding already in progress', status: embedStatus })
   }
@@ -164,9 +167,9 @@ router.post('/embed-all', async (req, res) => {
         .filter((f) => f && f.id && f.name != null && (f.content ?? '').trim() && isEmbeddable(withExt(f)))
         .map((f) => ({ id: f.id, name: f.name, content: String(f.content ?? '').trim(), ext: withExt(f) }))
     } else {
-      files = await getFilesForEmbedding()
+      files = await getFilesForEmbedding(userId)
     }
-    const result = await embedAllFiles(files)
+    const result = await embedAllFiles(files, userId)
     embedStatus = { running: false, lastResult: result, lastError: null }
     console.log('Embed all completed:', result)
   } catch (e) {

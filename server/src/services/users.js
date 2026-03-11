@@ -1,28 +1,36 @@
 import { hasSupabase, supabase } from '../db.js'
 import { getUserByUsername as memGet, insertUser as memInsert } from '../data/usersStore.js'
 
+export function normalizeUsername(username) {
+  return String(username || '').trim().toLowerCase()
+}
+
 export async function findUserByUsername(username) {
-  if (!username) return null
+  const normalized = normalizeUsername(username)
+  if (!normalized) return null
   if (hasSupabase()) {
     const { data, error } = await supabase
       .from('users')
       .select('id, username, password_hash')
-      .eq('username', username)
+      .eq('username', normalized)
       .maybeSingle()
     if (error) throw new Error(error.message)
     return data || null
   }
-  return memGet(username)
+  return memGet(normalized)
 }
 
 export async function createUser({ id, username, password_hash }) {
+  const normalized = normalizeUsername(username)
+  if (!normalized) throw new Error('username required')
+
   if (hasSupabase()) {
     const now = new Date().toISOString()
-    const row = { id, username, password_hash, created_at: now, updated_at: now }
+    const row = { id, username: normalized, password_hash, created_at: now, updated_at: now }
     const { error } = await supabase.from('users').insert(row)
     if (error) throw new Error(error.message)
-    return { id, username, password_hash }
+    return { id, username: normalized, password_hash }
   }
-  return memInsert({ id, username, password_hash })
+  return memInsert({ id, username: normalized, password_hash })
 }
 

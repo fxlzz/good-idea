@@ -58,33 +58,36 @@ function getExt(name: string): string {
 
 async function apiPost(path: string, body: unknown) {
   try {
-    await apiFetch(path, {
+    const res = await apiFetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+    return res.ok
   } catch {
-    // fail silently, local state is source of truth
+    return false
   }
 }
 
 async function apiPut(path: string, body: unknown) {
   try {
-    await apiFetch(path, {
+    const res = await apiFetch(path, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+    return res.ok
   } catch {
-    // fail silently
+    return false
   }
 }
 
 async function apiDelete(path: string) {
   try {
-    await apiFetch(path, { method: 'DELETE' })
+    const res = await apiFetch(path, { method: 'DELETE' })
+    return res.ok
   } catch {
-    // fail silently
+    return false
   }
 }
 
@@ -114,13 +117,18 @@ export const useFileTreeStore = create<FileTreeState>()(
           nodes: { ...s.nodes, [id]: full },
         }))
 
-        apiPost('/api/files', {
+        void apiPost('/api/files', {
           id,
           name: node.name,
           type: node.type,
           parentId: node.parentId ?? null,
           content: node.content ?? null,
         })
+          .then((ok) => {
+            if (!ok) return get().syncFromServer()
+            return undefined
+          })
+          .catch(() => undefined)
       },
 
       updateNode: (id, patch) => {
@@ -140,7 +148,12 @@ export const useFileTreeStore = create<FileTreeState>()(
           return { nodes, openTabs }
         })
 
-        apiPut(`/api/files/${id}`, patch)
+        void apiPut(`/api/files/${id}`, patch)
+          .then((ok) => {
+            if (!ok) return get().syncFromServer()
+            return undefined
+          })
+          .catch(() => undefined)
       },
 
       deleteNode: (id) => {
@@ -163,7 +176,12 @@ export const useFileTreeStore = create<FileTreeState>()(
           return { nodes, openTabs, activeTabId }
         })
 
-        apiDelete(`/api/files/${id}`)
+        void apiDelete(`/api/files/${id}`)
+          .then((ok) => {
+            if (!ok) return get().syncFromServer()
+            return undefined
+          })
+          .catch(() => undefined)
       },
 
       setExpanded: (id, expanded) => {
@@ -248,18 +266,25 @@ export const useFileTreeStore = create<FileTreeState>()(
           const res = await apiFetch('/api/files')
           if (!res.ok) return
           const { nodes: serverNodes } = await res.json()
-          if (serverNodes && Object.keys(serverNodes).length > 0) {
-            set((s) => {
-              const merged = { ...s.nodes }
-              for (const [id, node] of Object.entries(serverNodes) as [string, FileNode][]) {
-                const local = merged[id]
-                if (!local || node.updatedAt > local.updatedAt) {
-                  merged[id] = node
-                }
-              }
-              return { nodes: merged }
-            })
-          }
+          const safeNodes = (serverNodes ?? {}) as Record<string, FileNode>
+          set((s) => {
+            const openTabs = s.openTabs
+              .filter((t) => t.type !== 'file' || (t.nodeId != null && safeNodes[t.nodeId] != null))
+              .map((t) =>
+                t.type === 'file' && t.nodeId != null && safeNodes[t.nodeId]
+                  ? { ...t, title: safeNodes[t.nodeId].name }
+                  : t
+              )
+            const activeTabStillExists = openTabs.some((t) => t.id === s.activeTabId)
+            const activeTabId = activeTabStillExists ? s.activeTabId : (openTabs[openTabs.length - 1]?.id ?? null)
+            const expandedFolderIds = new Set(
+              [...s.expandedFolderIds].filter(
+                (id) => safeNodes[id] != null && safeNodes[id].type === 'folder'
+              )
+            )
+
+            return { nodes: safeNodes, openTabs, activeTabId, expandedFolderIds }
+          })
         } catch {
           // server unavailable
         } finally {
@@ -292,3 +317,19 @@ export const useFileTreeStore = create<FileTreeState>()(
     }
   )
 )
+
+export function clearFileTreePersistence() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // ignore localStorage access errors
+  }
+  useFileTreeStore.setState({
+    nodes: {},
+    openTabs: [],
+    activeTabId: null,
+    expandedFolderIds: new Set<string>(),
+    sortBy: 'name',
+    syncing: false,
+  })
+}

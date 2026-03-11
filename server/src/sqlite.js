@@ -21,9 +21,18 @@ export function getDb() {
 
   db.pragma('journal_mode = WAL')
 
+  const fileColumns = db.prepare('PRAGMA table_info(files)').all()
+  const hasLegacyFilesSchema =
+    fileColumns.length > 0 && !fileColumns.some((col) => col.name === 'user_id')
+  if (hasLegacyFilesSchema) {
+    // One-time reset for legacy schema: old rows are intentionally discarded.
+    db.exec('DROP TABLE IF EXISTS files')
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS files (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       name TEXT NOT NULL,
       type TEXT NOT NULL CHECK (type IN ('file', 'folder')),
       parent_id TEXT REFERENCES files(id) ON DELETE CASCADE,
@@ -34,6 +43,8 @@ export function getDb() {
     );
 
     CREATE INDEX IF NOT EXISTS files_parent_id ON files(parent_id);
+    CREATE INDEX IF NOT EXISTS files_user_id ON files(user_id);
+    CREATE INDEX IF NOT EXISTS files_user_parent_id ON files(user_id, parent_id);
   `)
 
   return db

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getFilesForEmbedding } from '../data/filesSource.js'
 import { getCollection } from '../services/chroma.js'
+import { getUserSettings } from '../data/settingsStore.js'
 import {
   getEmbedding,
   embedAllFiles,
@@ -10,13 +11,6 @@ import {
 } from '../services/embedding.js'
 
 const router = Router()
-
-function getConfig() {
-  return {
-    apiKey: process.env.DASHSCOPE_API_KEY,
-    baseUrl: process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  }
-}
 
 const SYSTEM_PROMPT_TEMPLATE = `你是一个知识库助手。根据以下检索到的文档片段回答用户问题。
 如果文档中没有相关信息，请如实说明"知识库中未找到相关内容"，然后尽力根据自身知识回答。
@@ -34,12 +28,17 @@ router.post('/chat', async (req, res) => {
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message required' })
   }
-  const { apiKey, baseUrl } = getConfig()
-  if (!apiKey) {
-    return res.status(503).json({ error: 'AI not configured: set DASHSCOPE_API_KEY' })
-  }
 
   try {
+    const userSettings = await getUserSettings(userId)
+    const apiKey = userSettings.llmApiKey || process.env.DASHSCOPE_API_KEY
+    const baseUrl = process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    const model = userSettings.llmModel || 'qwen-turbo'
+
+    if (!apiKey) {
+      return res.status(503).json({ error: 'AI not configured: set DASHSCOPE_API_KEY or user llmApiKey' })
+    }
+
     let context = ''
     let sources = []
 
@@ -89,7 +88,7 @@ router.post('/chat', async (req, res) => {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'qwen-turbo',
+        model,
         messages,
         stream: true,
       }),

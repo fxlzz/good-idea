@@ -9,6 +9,7 @@ import { createServer } from 'http'
 import filesRouter from './routes/files.js'
 import aiRouter from './routes/ai.js'
 import authRouter from './routes/auth.js'
+import settingsRouter from './routes/settings.js'
 import { requireAuth } from './middleware/auth.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -31,6 +32,7 @@ app.get('/api/health', (_, res) => {
 app.use('/api/auth', authRouter)
 app.use('/api/files', requireAuth, filesRouter)
 app.use('/api/ai', requireAuth, aiRouter)
+app.use('/api/settings', requireAuth, settingsRouter)
 
 // WebSocket for terminal
 // const wss = new WebSocketServer({ server, path: '/ws/terminal' })

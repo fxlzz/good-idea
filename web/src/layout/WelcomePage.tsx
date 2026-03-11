@@ -6,6 +6,7 @@ import {
   FormOutlined,
 } from '@ant-design/icons'
 import type { ReactNode } from 'react'
+import { useAuthStore } from '../store/auth'
 import { useFileTreeStore } from '../store/fileTree'
 import { useLayoutStore } from '../store/layout'
 
@@ -27,6 +28,7 @@ type QuickAction = {
 }
 
 export default function WelcomePage() {
+  const user = useAuthStore((s) => s.user)
   const addNode = useFileTreeStore((s) => s.addNode)
   const openFile = useFileTreeStore((s) => s.openFile)
   const openSpecialTab = useFileTreeStore((s) => s.openSpecialTab)
@@ -103,7 +105,7 @@ export default function WelcomePage() {
           <FileTextOutlined style={{ fontSize: 28, color: '#fff' }} />
         </div>
         <h2 style={{ margin: 0, color: 'var(--ide-text)', fontSize: 22, fontWeight: 600 }}>
-          欢迎回来，admin 👋
+          欢迎回来，{user?.username ?? 'admin'} 👋
         </h2>
         <p style={{ margin: '8px 0 0', color: 'var(--ide-text-muted)', fontSize: 14 }}>
           选择一个文件开始，或使用下方快速入口

@@ -1,4 +1,5 @@
 import { getCollection } from './chroma.js'
+import { getUserSettings, DEFAULT_SETTINGS } from '../data/settingsStore.js'
 
 function getApiKey() {
   return process.env.DASHSCOPE_API_KEY
@@ -8,15 +9,13 @@ function getBaseUrl() {
   return process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 }
 
-const CHUNK_SIZE = 800
-const CHUNK_OVERLAP = 100
 const EMBEDDABLE_EXTS = new Set(['.md', '.txt', ''])
 
 export function isEmbeddable(ext) {
   return EMBEDDABLE_EXTS.has(ext ?? '')
 }
 
-export function chunkText(text, maxLen = CHUNK_SIZE, overlap = CHUNK_OVERLAP) {
+export function chunkText(text, maxLen, overlap) {
   if (!text || text.trim().length === 0) return []
   const cleaned = text.trim()
   if (cleaned.length <= maxLen) return [cleaned]
@@ -103,7 +102,17 @@ export async function embedFile(file, userId) {
   const col = await getCollection()
   await removeFileEmbeddings(file.id, userId)
 
-  const chunks = chunkText(file.content)
+  let settings = DEFAULT_SETTINGS
+  try {
+    settings = await getUserSettings(userId)
+  } catch {
+    // fall back to defaults if settings not available
+  }
+
+  const maxLen = Math.max(100, Math.min(4000, settings.chunkSize ?? DEFAULT_SETTINGS.chunkSize))
+  const overlap = Math.max(0, Math.min(500, settings.chunkOverlap ?? DEFAULT_SETTINGS.chunkOverlap))
+
+  const chunks = chunkText(file.content, maxLen, overlap)
   if (chunks.length === 0) return 0
 
   const BATCH = 20

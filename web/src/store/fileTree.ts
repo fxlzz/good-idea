@@ -29,6 +29,7 @@ type FileTreeState = {
   expandedFolderIds: Set<string>
   sortBy: 'name' | 'updated'
   syncing: boolean
+  pendingRootNew: 'file' | 'folder' | null
   addNode: (node: Omit<FileNode, 'createdAt' | 'updatedAt'>) => void
   updateNode: (id: string, patch: Partial<FileNode>) => void
   deleteNode: (id: string) => void
@@ -43,6 +44,8 @@ type FileTreeState = {
   getNode: (id: string) => FileNode | undefined
   getRecentFiles: (count: number) => FileNode[]
   syncFromServer: () => Promise<void>
+  requestNewRootNode: (type: 'file' | 'folder') => void
+  clearPendingRootNew: () => void
 }
 
 const STORAGE_KEY = 'good-idea-files'
@@ -100,6 +103,7 @@ export const useFileTreeStore = create<FileTreeState>()(
       expandedFolderIds: new Set<string>(),
       sortBy: 'name',
       syncing: false,
+      pendingRootNew: null,
 
       addNode: (node) => {
         const id = node.id ?? generateId()
@@ -130,6 +134,10 @@ export const useFileTreeStore = create<FileTreeState>()(
           })
           .catch(() => undefined)
       },
+
+      requestNewRootNode: (type) => set({ pendingRootNew: type }),
+
+      clearPendingRootNew: () => set({ pendingRootNew: null }),
 
       updateNode: (id, patch) => {
         set((s) => {

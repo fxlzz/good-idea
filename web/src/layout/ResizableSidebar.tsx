@@ -23,7 +23,7 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const [dragging, setDragging] = useState(false);
   const startX = useRef(0);
   const startW = useRef(0);
-  const addNode = useFileTreeStore((s) => s.addNode);
+  const requestNewRootNode = useFileTreeStore((s) => s.requestNewRootNode);
 
   const rootMenuItems: MenuProps["items"] = [
     { key: "newFile", icon: <FileAddOutlined />, label: "新建文件" },
@@ -54,22 +54,11 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   }, [dragging, onWidthChange]);
 
   const handleNewFile = () => {
-    addNode({
-      id: generateId(),
-      name: "未命名.md",
-      type: "file",
-      parentId: null,
-      content: "",
-    });
+    requestNewRootNode("file");
   };
 
   const handleNewFolder = () => {
-    addNode({
-      id: generateId(),
-      name: "未命名",
-      type: "folder",
-      parentId: null,
-    });
+    requestNewRootNode("folder");
   };
 
   const handleRootMenuClick: MenuProps["onClick"] = ({ key }) => {

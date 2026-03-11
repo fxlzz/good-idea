@@ -335,10 +335,18 @@ export default function FileTree() {
   const setExpandedIds = useFileTreeStore((s) => s.setExpandedIds)
   const setExpanded = useFileTreeStore((s) => s.setExpanded)
   const openFile = useFileTreeStore((s) => s.openFile)
+  const pendingRootNew = useFileTreeStore((s) => s.pendingRootNew)
+  const clearPendingRootNew = useFileTreeStore((s) => s.clearPendingRootNew)
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null)
   const [pendingNew, setPendingNew] = useState<PendingNew | null>(null)
 
   const clearPending = useCallback(() => setPendingNew(null), [])
+
+  useEffect(() => {
+    if (!pendingRootNew) return
+    setPendingNew({ parentId: null, type: pendingRootNew })
+    clearPendingRootNew()
+  }, [pendingRootNew, clearPendingRootNew])
 
   const treeData: DataNode[] = useMemo(() => {
     function build(parentId: string | null): DataNode[] {
@@ -398,6 +406,21 @@ export default function FileTree() {
           children: n.type === 'folder' ? [...build(n.id), ...pendingChild] : undefined,
         }
       })
+
+      if (parentId === null && pendingNew?.parentId === null) {
+        result.push({
+          key: '__pending__root',
+          isLeaf: pendingNew.type === 'file',
+          icon: pendingNew.type === 'folder' ? <FolderOutlined /> : <FileOutlined />,
+          title: (
+            <NewNodeInput
+              parentId={null}
+              type={pendingNew.type}
+              onDone={clearPending}
+            />
+          ),
+        })
+      }
 
       return result
     }

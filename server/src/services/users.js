@@ -1,5 +1,5 @@
 import { hasSupabase, supabase } from '../db.js'
-import { getUserByUsername as memGet, insertUser as memInsert } from '../data/usersStore.js'
+import { getSqlite } from '../db.js'
 
 export function normalizeUsername(username) {
   return String(username || '').trim().toLowerCase()
@@ -17,7 +17,12 @@ export async function findUserByUsername(username) {
     if (error) throw new Error(error.message)
     return data || null
   }
-  return memGet(normalized)
+
+  const db = getSqlite()
+  const row = db
+    .prepare('SELECT id, username, password_hash FROM users WHERE username = ? LIMIT 1')
+    .get(normalized)
+  return row || null
 }
 
 export async function createUser({ id, username, password_hash }) {
@@ -31,6 +36,16 @@ export async function createUser({ id, username, password_hash }) {
     if (error) throw new Error(error.message)
     return { id, username: normalized, password_hash }
   }
-  return memInsert({ id, username: normalized, password_hash })
+
+  const db = getSqlite()
+  const now = new Date().toISOString()
+  db
+    .prepare(
+      `INSERT INTO users (id, username, password_hash, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .run(id, normalized, password_hash, now, now)
+
+  return { id, username: normalized, password_hash, created_at: now, updated_at: now }
 }
 

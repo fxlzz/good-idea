@@ -1,6 +1,7 @@
 import type React from "react";
 import { FileAddOutlined, FolderAddOutlined } from "@ant-design/icons";
-import { Layout, Tooltip } from "antd";
+import { Dropdown, Layout, Tooltip } from "antd";
+import type { MenuProps } from "antd";
 import { useEffect, useRef, useState } from "react";
 import FileTree from "../components/FileTree";
 import { useFileTreeStore } from "../store/fileTree";
@@ -23,6 +24,11 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const startX = useRef(0);
   const startW = useRef(0);
   const addNode = useFileTreeStore((s) => s.addNode);
+
+  const rootMenuItems: MenuProps["items"] = [
+    { key: "newFile", icon: <FileAddOutlined />, label: "新建文件" },
+    { key: "newFolder", icon: <FolderAddOutlined />, label: "新建文件夹" },
+  ];
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -60,10 +66,18 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const handleNewFolder = () => {
     addNode({
       id: generateId(),
-      name: "新文件夹",
+      name: "未命名",
       type: "folder",
       parentId: null,
     });
+  };
+
+  const handleRootMenuClick: MenuProps["onClick"] = ({ key }) => {
+    if (key === "newFile") {
+      handleNewFile();
+    } else if (key === "newFolder") {
+      handleNewFolder();
+    }
   };
 
   return (
@@ -80,42 +94,57 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
           flexDirection: "column",
         }}
       >
-        <div
-          style={{
-            padding: "8px 10px",
-            borderBottom: "1px solid var(--ide-sidebar-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
+        <Dropdown
+          menu={{ items: rootMenuItems, onClick: handleRootMenuClick }}
+          trigger={["contextMenu"]}
+          getPopupContainer={() => document.body}
         >
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ide-text)" }}>文件</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Tooltip title="新建文件">
-              <span
-                style={{ cursor: "pointer", padding: 4, color: "var(--ide-text-muted)" }}
-                onClick={handleNewFile}
-                role="button"
-                tabIndex={0}
-              >
-                <FileAddOutlined style={{ fontSize: 14 }} />
-              </span>
-            </Tooltip>
-            <Tooltip title="新建文件夹">
-              <span
-                style={{ cursor: "pointer", padding: 4, color: "var(--ide-text-muted)" }}
-                onClick={handleNewFolder}
-                role="button"
-                tabIndex={0}
-              >
-                <FolderAddOutlined style={{ fontSize: 14 }} />
-              </span>
-            </Tooltip>
+          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <div
+              style={{
+                padding: "8px 10px",
+                borderBottom: "1px solid var(--ide-sidebar-border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ide-text)" }}>文件</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Tooltip title="新建文件">
+                  <span
+                    style={{ cursor: "pointer", padding: 4, color: "var(--ide-text-muted)" }}
+                    onClick={handleNewFile}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <FileAddOutlined style={{ fontSize: 14 }} />
+                  </span>
+                </Tooltip>
+                <Tooltip title="新建文件夹">
+                  <span
+                    style={{ cursor: "pointer", padding: 4, color: "var(--ide-text-muted)" }}
+                    onClick={handleNewFolder}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <FolderAddOutlined style={{ fontSize: 14 }} />
+                  </span>
+                </Tooltip>
+              </div>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                minHeight: 0,
+                background: "var(--ide-tree-bg)",
+              }}
+            >
+              <FileTree />
+            </div>
           </div>
-        </div>
-        <div style={{ flex: 1, overflow: "auto", minHeight: 0, background: "var(--ide-tree-bg)" }}>
-          <FileTree />
-        </div>
+        </Dropdown>
       </Layout.Sider>
       <div
         role="separator"

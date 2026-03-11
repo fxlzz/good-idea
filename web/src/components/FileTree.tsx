@@ -39,9 +39,13 @@ const NewNodeInput = memo(function NewNodeInput({
 
   const commit = useCallback(() => {
     const trimmed = value.trim()
-    if (trimmed) {
-      addNode({ id: generateId(), name: trimmed, type, parentId })
+    let finalName = trimmed
+
+    if (!finalName) {
+      finalName = type === 'file' ? '未命名.md' : '未命名'
     }
+
+    addNode({ id: generateId(), name: finalName, type, parentId })
     onDone()
   }, [value, type, parentId, addNode, onDone])
 
@@ -59,7 +63,7 @@ const NewNodeInput = memo(function NewNodeInput({
             if (e.key === 'Enter') commit()
             if (e.key === 'Escape') onDone()
           }}
-          onBlur={onDone}
+          onBlur={commit}
           onClick={(e) => e.stopPropagation()}
         />
       </span>

@@ -2,6 +2,7 @@ import { Button, Card, Form, Input, Typography, message } from 'antd'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuthStore } from '../store/auth'
+import { clearFileTreePersistence } from '../store/fileTree'
 
 type LoginBody = { username: string; password: string }
 
@@ -30,6 +31,7 @@ export default function LoginPage() {
         message.error(data?.error || '登录失败')
         return
       }
+      clearFileTreePersistence()
       setAuth(data.token, data.user)
       navigate(from, { replace: true })
     } catch {

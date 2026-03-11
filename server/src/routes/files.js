@@ -1,24 +1,25 @@
 import { Router } from 'express'
-import { memoryStore } from '../data/filesSource.js'
 import { supabase, hasSupabase, getSqlite } from '../db.js'
 import { embedFile, removeFileEmbeddings } from './ai.js'
 import { isEmbeddable } from '../services/embedding.js'
 
 const router = Router()
 
-function triggerEmbed(file) {
+function triggerEmbed(file, userId) {
   if (file.content && isEmbeddable(file.ext)) {
-    embedFile(file).catch((err) =>
+    embedFile(file, userId).catch((err) =>
       console.warn('Auto-embed failed for', file.id, err.message)
     )
   }
 }
 
 function getNodes(req, res, next) {
+  const userId = req.user.id
   if (hasSupabase()) {
     supabase
       .from('files')
       .select('*')
+      .eq('user_id', userId)
       .then(({ data, error }) => {
         if (error) return res.status(500).json({ error: error.message })
         const nodes = {}
@@ -43,7 +44,7 @@ function getNodes(req, res, next) {
   }
 
   const db = getSqlite()
-  const rows = db.prepare('SELECT * FROM files').all()
+  const rows = db.prepare('SELECT * FROM files WHERE user_id = ?').all(userId)
 
   const nodes = {}
   const rootIds = []
@@ -72,6 +73,7 @@ router.get('/', getNodes, (req, res) => {
 })
 
 router.post('/', async (req, res) => {
+  const userId = req.user.id
   const { id, name, type, parentId, content } = req.body || {}
   if (!id || !name || !type) {
     return res.status(400).json({ error: 'id, name, type required' })
@@ -80,6 +82,7 @@ router.post('/', async (req, res) => {
   const ext = type === 'file' ? (name.includes('.') ? `.${name.split('.').pop()}` : '') : null
   const row = {
     id,
+    user_id: userId,
     name,
     type,
     parent_id: parentId ?? null,
@@ -93,7 +96,7 @@ router.post('/', async (req, res) => {
     const { error } = await supabase.from('files').insert(row)
     if (error) return res.status(500).json({ error: error.message })
     res.status(201).json(row)
-    triggerEmbed({ id, name, content, ext })
+    triggerEmbed({ id, name, content, ext }, userId)
     return
   }
 
@@ -101,18 +104,19 @@ router.post('/', async (req, res) => {
     const db = getSqlite()
     db
       .prepare(
-        `INSERT INTO files (id, name, type, parent_id, content, ext, created_at, updated_at)
-         VALUES (@id, @name, @type, @parent_id, @content, @ext, @created_at, @updated_at)`
+        `INSERT INTO files (id, user_id, name, type, parent_id, content, ext, created_at, updated_at)
+         VALUES (@id, @user_id, @name, @type, @parent_id, @content, @ext, @created_at, @updated_at)`
       )
       .run(row)
     res.status(201).json(row)
-    triggerEmbed({ id, name, content, ext })
+    triggerEmbed({ id, name, content, ext }, userId)
   } catch (e) {
     res.status(500).json({ error: String(e.message || e) })
   }
 })
 
 router.put('/:id', async (req, res) => {
+  const userId = req.user.id
   const id = req.params.id
   const { name, type, parentId, content } = req.body || {}
   const now = new Date().toISOString()
@@ -124,20 +128,25 @@ router.put('/:id', async (req, res) => {
     if (parentId !== undefined) updates.parent_id = parentId
     if (content !== undefined) updates.content = content
 
-    const { error } = await supabase.from('files').update(updates).eq('id', id)
+    const { error } = await supabase.from('files').update(updates).eq('id', id).eq('user_id', userId)
     if (error) return res.status(500).json({ error: error.message })
     res.json({ ok: true })
 
     if (content !== undefined) {
-      const { data } = await supabase.from('files').select('id, name, content, ext').eq('id', id).single()
-      if (data) triggerEmbed(data)
+      const { data } = await supabase
+        .from('files')
+        .select('id, name, content, ext')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single()
+      if (data) triggerEmbed(data, userId)
     }
     return
   }
 
   const db = getSqlite()
 
-  const existing = db.prepare('SELECT * FROM files WHERE id = ?').get(id)
+  const existing = db.prepare('SELECT * FROM files WHERE id = ? AND user_id = ?').get(id, userId)
   if (!existing) return res.status(404).json({ error: 'not found' })
 
   const updated = {
@@ -158,7 +167,7 @@ router.put('/:id', async (req, res) => {
              parent_id = @parent_id,
              content = @content,
              updated_at = @updated_at
-         WHERE id = @id`
+         WHERE id = @id AND user_id = @user_id`
       )
       .run(updated)
   } catch (e) {
@@ -172,7 +181,7 @@ router.put('/:id', async (req, res) => {
       name: updated.name,
       content: updated.content,
       ext: updated.ext,
-    })
+    }, userId)
   }
 })
 
@@ -185,10 +194,11 @@ function collectIds(nodes, pid) {
 }
 
 router.delete('/:id', async (req, res) => {
+  const userId = req.user.id
   const id = req.params.id
 
   if (hasSupabase()) {
-    const { data, error } = await supabase.from('files').select('id, parent_id')
+    const { data, error } = await supabase.from('files').select('id, parent_id').eq('user_id', userId)
     if (error) return res.status(500).json({ error: error.message })
 
     const nodes = (data || []).reduce((acc, row) => {
@@ -197,18 +207,18 @@ router.delete('/:id', async (req, res) => {
     }, {})
     const toDelete = collectIds(nodes, id)
 
-    const { error: delErr } = await supabase.from('files').delete().in('id', toDelete)
+    const { error: delErr } = await supabase.from('files').delete().in('id', toDelete).eq('user_id', userId)
     if (delErr) return res.status(500).json({ error: delErr.message })
     res.json({ ok: true })
 
     for (const did of toDelete) {
-      removeFileEmbeddings(did).catch(() => {})
+      removeFileEmbeddings(did, userId).catch(() => {})
     }
     return
   }
 
   const db = getSqlite()
-  const rows = db.prepare('SELECT id, parent_id FROM files').all()
+  const rows = db.prepare('SELECT id, parent_id FROM files WHERE user_id = ?').all(userId)
   const nodes = rows.reduce((acc, row) => {
     acc[row.id] = { id: row.id, parentId: row.parent_id }
     return acc
@@ -216,10 +226,10 @@ router.delete('/:id', async (req, res) => {
 
   const toDelete = collectIds(nodes, id)
 
-  const stmt = db.prepare('DELETE FROM files WHERE id = ?')
+  const stmt = db.prepare('DELETE FROM files WHERE id = ? AND user_id = ?')
   const transaction = db.transaction((ids) => {
     for (const rid of ids) {
-      stmt.run(rid)
+      stmt.run(rid, userId)
     }
   })
 

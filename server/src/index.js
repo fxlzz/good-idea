@@ -11,7 +11,9 @@ import aiRouter from './routes/ai.js'
 import authRouter from './routes/auth.js'
 import { requireAuth } from './middleware/auth.js'
 
-dotenv.config()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+dotenv.config({ path: path.join(__dirname, '..', '.env') })
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -20,8 +22,6 @@ const server = createServer(app)
 app.use(cors({ origin: true }))
 app.use(express.json())
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 const staticRoot = path.resolve(__dirname, '../../web/dist')
 
 app.get('/api/health', (_, res) => {
@@ -70,6 +70,17 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(staticRoot, 'index.html'))
 })
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running at http://localhost:${PORT}`)
+  const chromaUrl = process.env.CHROMA_URL || 'http://localhost:8000'
+  try {
+    const u = new URL(chromaUrl)
+    const base = `${u.protocol}//${u.hostname}:${u.port || (u.protocol === 'https:' ? 443 : 8000)}`
+    const res = await fetch(`${base}/api/v2/heartbeat`, { signal: AbortSignal.timeout(3000) })
+    if (res.ok) console.log(`Chroma: ${base} ok`)
+    else console.warn(`Chroma: ${base} returned ${res.status}`)
+  } catch (e) {
+    console.warn(`Chroma: cannot reach ${chromaUrl} —`, e.message || e)
+    console.warn('Start Chroma (e.g. docker run -p 8000:8000 chromadb/chroma) or set CHROMA_URL.')
+  }
 })

@@ -62,33 +62,46 @@ export async function getEmbeddings(texts) {
   const apiKey = getApiKey()
   if (!apiKey) throw new Error('DASHSCOPE_API_KEY not configured')
 
-  const res = await fetch(`${getBaseUrl()}/embeddings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'text-embedding-v3',
-      input: texts,
-      dimensions: 1024,
-    }),
-  })
+  const items = Array.isArray(texts) ? texts : [texts]
+  const MAX_BATCH = 10
+  const allEmbeddings = []
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Embedding API error: ${res.status} ${err}`)
+  for (let i = 0; i < items.length; i += MAX_BATCH) {
+    const batch = items.slice(i, i + MAX_BATCH)
+
+    const res = await fetch(`${getBaseUrl()}/embeddings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-v3',
+        input: batch,
+        dimensions: 1024,
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`Embedding API error: ${res.status} ${err}`)
+    }
+
+    const data = await res.json()
+    for (const d of data.data) {
+      allEmbeddings.push(d.embedding)
+    }
   }
 
-  const data = await res.json()
-  return data.data.map((d) => d.embedding)
+  return allEmbeddings
 }
 
-export async function embedFile(file) {
+export async function embedFile(file, userId) {
+  if (!userId) throw new Error('userId required for embedding')
   if (!file.content || !isEmbeddable(file.ext)) return 0
 
   const col = await getCollection()
-  await removeFileEmbeddings(file.id)
+  await removeFileEmbeddings(file.id, userId)
 
   const chunks = chunkText(file.content)
   if (chunks.length === 0) return 0
@@ -100,8 +113,9 @@ export async function embedFile(file) {
     const batch = chunks.slice(i, i + BATCH)
     const embeddings = await getEmbeddings(batch)
 
-    const ids = batch.map((_, j) => `${file.id}_chunk_${i + j}`)
+    const ids = batch.map((_, j) => `${userId}:${file.id}_chunk_${i + j}`)
     const metadatas = batch.map((_, j) => ({
+      userId,
       fileId: file.id,
       fileName: file.name,
       chunkIndex: i + j,
@@ -115,19 +129,25 @@ export async function embedFile(file) {
   return total
 }
 
-export async function removeFileEmbeddings(fileId) {
+async function removeFileEmbeddingsForUser(fileId, userId) {
   try {
     const col = await getCollection()
-    await col.delete({ where: { fileId } })
+    const where = userId ? { userId, fileId } : { fileId }
+    await col.delete({ where })
   } catch {
     // collection might be empty or fileId not found
   }
 }
 
+export async function removeFileEmbeddings(fileId, userId) {
+  return removeFileEmbeddingsForUser(fileId, userId)
+}
+
 /**
  * Embed all given files into ChromaDB. Caller should get files via getFilesForEmbedding().
  */
-export async function embedAllFiles(files) {
+export async function embedAllFiles(files, userId) {
+  if (!userId) throw new Error('userId required for embedding')
   if (!Array.isArray(files)) {
     throw new Error('embedAllFiles requires a files array from getFilesForEmbedding()')
   }
@@ -136,7 +156,7 @@ export async function embedAllFiles(files) {
   let processedFiles = 0
 
   for (const file of files) {
-    const count = await embedFile(file)
+    const count = await embedFile(file, userId)
     totalChunks += count
     processedFiles++
   }

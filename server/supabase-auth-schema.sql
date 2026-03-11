@@ -11,4 +11,5 @@ create table if not exists public.users (
 );
 
 create index if not exists users_username_idx on public.users (username);
+create unique index if not exists users_username_lower_uidx on public.users (lower(username));
 

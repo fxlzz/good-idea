@@ -303,7 +303,19 @@ export const useFileTreeStore = create<FileTreeState>()(
     {
       name: STORAGE_KEY,
       partialize: (s) => ({
-        nodes: s.nodes,
+        nodes: Object.fromEntries(
+          Object.entries(s.nodes).map(([id, node]) => {
+            const isSmallText =
+              node.type === 'file' &&
+              (node.ext === '.md' || node.ext === '.txt' || !node.ext) &&
+              (node.content?.length ?? 0) < 50_000
+            if (!isSmallText) {
+              const { content, ...rest } = node
+              return [id, rest]
+            }
+            return [id, node]
+          }),
+        ),
         openTabs: s.openTabs,
         activeTabId: s.activeTabId,
         expandedFolderIds: Array.from(s.expandedFolderIds),

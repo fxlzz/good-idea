@@ -10,12 +10,34 @@ import {
   FolderOutlined,
   UploadOutlined,
 } from '@ant-design/icons'
-import { Dropdown, Tree } from 'antd'
+import { Dropdown, Tree, message } from 'antd'
 import type { DataNode } from 'antd/es/tree'
 import type { MenuProps } from 'antd'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useBookmarksStore } from '../store/bookmarks'
 import { useFileTreeStore } from '../store/fileTree'
+
+let _uploadLimitBytes: number | null = null
+
+async function getUploadLimitBytes(): Promise<number> {
+  if (_uploadLimitBytes !== null) return _uploadLimitBytes
+  try {
+    const res = await fetch('/api/config/upload-limit')
+    if (res.ok) {
+      const data = await res.json()
+      _uploadLimitBytes = data.bytes ?? 10 * 1024 * 1024
+      return _uploadLimitBytes
+    }
+  } catch { /* fallback */ }
+  _uploadLimitBytes = 10 * 1024 * 1024
+  return _uploadLimitBytes
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`
+  return `${bytes}B`
+}
 
 function generateId(): string {
   return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
@@ -159,21 +181,49 @@ const NodeTitle = memo(function NodeTitle({
   )
 
   const handleUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
       if (!file) return
+
+      const limitBytes = await getUploadLimitBytes()
+      const estimatedBodySize = file.size * 1.4
+      if (estimatedBodySize > limitBytes) {
+        message.error(
+          `文件 "${file.name}" 大小为 ${formatBytes(file.size)}，超过上传限制 ${formatBytes(limitBytes)}，请选择更小的文件`,
+        )
+        e.target.value = ''
+        return
+      }
+
+      const ext = file.name.includes('.') ? `.${file.name.split('.').pop()}`.toLowerCase() : ''
       const reader = new FileReader()
+
       reader.onload = () => {
+        let content: string | null = null
+
+        if (ext === '.md' || ext === '.txt' || !ext) {
+          content = typeof reader.result === 'string' ? reader.result : ''
+        } else {
+          const result = typeof reader.result === 'string' ? reader.result : ''
+          const base64 = result.startsWith('data:') ? result.split(',')[1] ?? '' : result
+          content = base64
+        }
+
         addNode({
           id: generateId(),
           name: file.name,
           type: 'file',
           parentId: nodeId,
-          content: reader.result as string,
+          content: content ?? '',
         })
         setExpanded(nodeId, true)
       }
-      reader.readAsText(file)
+
+      if (ext === '.md' || ext === '.txt' || !ext) {
+        reader.readAsText(file)
+      } else {
+        reader.readAsDataURL(file)
+      }
       e.target.value = ''
     },
     [nodeId, addNode, setExpanded],

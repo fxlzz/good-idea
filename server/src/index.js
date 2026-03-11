@@ -21,12 +21,33 @@ const PORT = process.env.PORT || 3001
 const server = createServer(app)
 
 app.use(cors({ origin: true }))
-app.use(express.json())
+app.use(
+  express.json({
+    limit: process.env.JSON_BODY_LIMIT || '10mb',
+  }),
+)
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: process.env.JSON_BODY_LIMIT || '10mb',
+  }),
+)
 
 const staticRoot = path.resolve(__dirname, '../../web/dist')
 
 app.get('/api/health', (_, res) => {
   res.json({ ok: true })
+})
+
+app.get('/api/config/upload-limit', (_, res) => {
+  const raw = process.env.JSON_BODY_LIMIT || '10mb'
+  const match = raw.match(/^(\d+(?:\.\d+)?)\s*(kb|mb|gb|b)?$/i)
+  if (!match) return res.json({ bytes: 10 * 1024 * 1024, label: '10MB' })
+  const num = parseFloat(match[1])
+  const unit = (match[2] || 'b').toLowerCase()
+  const multiplier = { b: 1, kb: 1024, mb: 1024 * 1024, gb: 1024 * 1024 * 1024 }[unit] ?? 1
+  const bytes = Math.floor(num * multiplier)
+  res.json({ bytes, label: raw.toUpperCase() })
 })
 
 app.use('/api/auth', authRouter)

@@ -32,7 +32,12 @@ export default function TabContent({ nodeId }: TabContentProps) {
     return <PdfViewer content={content} />
   }
   if (ext === '.docx' || ext === '.doc') {
-    return <DocxViewer content={content} />
+    return (
+      <DocxViewer
+        content={content}
+        onContentChange={(newBase64) => updateNode(nodeId, { content: newBase64 })}
+      />
+    )
   }
   if (ext === '.xlsx') {
     return <XlsxViewer content={content} />

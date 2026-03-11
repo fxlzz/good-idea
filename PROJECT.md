@@ -38,7 +38,7 @@
 
 - **SQLite**：默认本地数据库文件，存储 `files` 表（文件/文件夹树与内容）。
 - **Supabase**：可选的托管 PostgreSQL 后端，沿用相同的 `files` 表结构。
-- **Chroma**：向量数据库，存储 `.md` / `.txt` 的 embedding，用于 RAG 检索。
+- **Chroma**：向量数据库，存储 `.md` / `.txt` / `.docx` / `.xlsx` / `.pdf` 的 embedding，用于 RAG 检索。
 
 ---
 
@@ -205,7 +205,7 @@ cd web && npm run dev
 
 - **文件树**：左侧可收缩侧栏，支持文件/文件夹的增删改与选中，与后端 `/api/files` 同步。
 - **多 Tab**：已打开文件用 Tab 管理，可切换、关闭。
-- **多格式预览**：Markdown、PDF、Word(docx)、Excel(xlsx) 等有对应 Viewer 组件。
+- **多格式预览**：Markdown、PDF、Word(docx)、Excel(xlsx) 等有对应 Viewer 组件，这些文档（`.md`、`.txt`、`.docx`、`.xlsx`、`.pdf`）在后端会被解析为纯文本并写入向量库，用于 RAG 检索。
 - **全局搜索**：SearchModal 等，可与后端检索或本地过滤结合（具体以代码为准）。
 - **RAG 对话**：AIPanel 调用 `/api/ai/chat`，流式展示回复，并标注来源文件。
 - **白板**：WhiteboardView 使用 tldraw。

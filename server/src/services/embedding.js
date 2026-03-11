@@ -1,5 +1,6 @@
 import { getCollection } from './chroma.js'
 import { getUserSettings, DEFAULT_SETTINGS } from '../data/settingsStore.js'
+import { getEmbeddableText } from './textExtractors.js'
 
 function getApiKey() {
   return process.env.DASHSCOPE_API_KEY
@@ -9,7 +10,7 @@ function getBaseUrl() {
   return process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 }
 
-const EMBEDDABLE_EXTS = new Set(['.md', '.txt', ''])
+const EMBEDDABLE_EXTS = new Set(['.md', '.txt', '.docx', '.doc', '.xlsx', '.pdf', ''])
 
 export function isEmbeddable(ext) {
   return EMBEDDABLE_EXTS.has(ext ?? '')
@@ -97,7 +98,7 @@ export async function getEmbeddings(texts) {
 
 export async function embedFile(file, userId) {
   if (!userId) throw new Error('userId required for embedding')
-  if (!file.content || !isEmbeddable(file.ext)) return 0
+  if (!isEmbeddable(file.ext)) return 0
 
   const col = await getCollection()
   await removeFileEmbeddings(file.id, userId)
@@ -112,7 +113,10 @@ export async function embedFile(file, userId) {
   const maxLen = Math.max(100, Math.min(4000, settings.chunkSize ?? DEFAULT_SETTINGS.chunkSize))
   const overlap = Math.max(0, Math.min(500, settings.chunkOverlap ?? DEFAULT_SETTINGS.chunkOverlap))
 
-  const chunks = chunkText(file.content, maxLen, overlap)
+  const text = await getEmbeddableText(file)
+  if (!text) return 0
+
+  const chunks = chunkText(text, maxLen, overlap)
   if (chunks.length === 0) return 0
 
   const BATCH = 20

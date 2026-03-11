@@ -11,6 +11,30 @@ export const DEFAULT_SETTINGS = {
   llmApiKey: '',
 }
 
+function ensureSqliteSettingsSchema(db) {
+  db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS user_settings (
+         user_id TEXT PRIMARY KEY,
+         llm_model TEXT,
+         embedding_model TEXT,
+         storage_engine TEXT,
+         chunk_size INTEGER,
+         chunk_overlap INTEGER,
+         chunk_separators TEXT,
+         enable_parent_chunks INTEGER,
+         llm_api_key TEXT
+       );`,
+    )
+    .run()
+
+  const cols = db.prepare("PRAGMA table_info('user_settings')").all()
+  const hasLlmApiKey = cols.some((c) => c.name === 'llm_api_key')
+  if (!hasLlmApiKey) {
+    db.exec(`ALTER TABLE user_settings ADD COLUMN llm_api_key TEXT;`)
+  }
+}
+
 export async function getUserSettings(userId) {
   if (!userId) throw new Error('userId is required for settings')
 
@@ -46,21 +70,7 @@ export async function getUserSettings(userId) {
   }
 
   const db = getSqlite()
-  db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS user_settings (
-         user_id TEXT PRIMARY KEY,
-         llm_model TEXT,
-         embedding_model TEXT,
-         storage_engine TEXT,
-         chunk_size INTEGER,
-         chunk_overlap INTEGER,
-         chunk_separators TEXT,
-         enable_parent_chunks INTEGER,
-         llm_api_key TEXT
-       );`
-    )
-    .run()
+  ensureSqliteSettingsSchema(db)
 
   const existing = db
     .prepare(
@@ -116,21 +126,7 @@ export async function updateUserSettings(userId, partial) {
   }
 
   const db = getSqlite()
-  db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS user_settings (
-         user_id TEXT PRIMARY KEY,
-         llm_model TEXT,
-         embedding_model TEXT,
-         storage_engine TEXT,
-         chunk_size INTEGER,
-         chunk_overlap INTEGER,
-         chunk_separators TEXT,
-         enable_parent_chunks INTEGER,
-         llm_api_key TEXT
-       );`
-    )
-    .run()
+  ensureSqliteSettingsSchema(db)
 
   const stmt = db.prepare(
     `INSERT INTO user_settings (

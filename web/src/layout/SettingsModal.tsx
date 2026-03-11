@@ -1,6 +1,6 @@
 import { Layout, Menu, Modal, Radio, Typography } from 'antd'
 import { useState } from 'react'
-import { useSettingsStore, ThemeMode } from '../store/settings'
+import { useSettingsStore, type ThemeMode } from '../store/settings'
 
 const { Sider, Content } = Layout
 const { Title } = Typography

@@ -23,6 +23,7 @@ import {
   isAllowedExtension,
   UNSUPPORTED_FILE_TYPE_MSG,
 } from '../utils/fileTypes'
+import { FILE_TREE_DRAG_MIME } from '../utils/markdownLinks'
 
 function generateId(): string {
   return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
@@ -91,6 +92,7 @@ type NodeTitleProps = {
   nodeId: string
   name: string
   type: 'file' | 'folder'
+  ext?: string
   isEditing: boolean
   onStartRename: () => void
   onStopRename: () => void
@@ -102,6 +104,7 @@ const NodeTitle = memo(function NodeTitle({
   nodeId,
   name,
   type,
+  ext,
   isEditing,
   onStartRename,
   onStopRename,
@@ -177,6 +180,20 @@ const NodeTitle = memo(function NodeTitle({
       toggleBookmark(nodeId)
     },
     [nodeId, toggleBookmark],
+  )
+
+  const canDragMdFile = type === 'file' && (ext ?? '').toLowerCase() === '.md' && !isEditing
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLSpanElement>) => {
+      if (!canDragMdFile) {
+        e.preventDefault()
+        return
+      }
+      e.dataTransfer.setData(FILE_TREE_DRAG_MIME, nodeId)
+      e.dataTransfer.effectAllowed = 'copy'
+    },
+    [canDragMdFile, nodeId],
   )
 
   const handleSaveRename = useCallback(() => {
@@ -311,6 +328,8 @@ const NodeTitle = memo(function NodeTitle({
     >
       <span
         className="ide-tree-node-title"
+        draggable={canDragMdFile}
+        onDragStart={handleDragStart}
         onContextMenu={(e) => {
           e.stopPropagation()
           e.preventDefault()
@@ -385,6 +404,7 @@ export default function FileTree() {
               nodeId={n.id}
               name={n.name}
               type={n.type}
+              ext={n.ext}
               isEditing={editingNodeId === n.id}
               onStartRename={() => setEditingNodeId(n.id)}
               onStopRename={() => setEditingNodeId(null)}

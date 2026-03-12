@@ -1,29 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import { useFileTreeStore } from '../store/fileTree'
-
-const STORAGE_KEY = 'good-idea-graph'
-
-type GraphNode = { id: string; name: string }
-type GraphLink = { source: string; target: string }
-type Graph = { nodes: GraphNode[]; links: GraphLink[] }
-
-function loadGraph(): Graph {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Graph
-      if (parsed.nodes && parsed.links) return parsed
-    }
-  } catch {
-    // ignore
-  }
-  return { nodes: [], links: [] }
-}
-
-function saveGraph(g: Graph) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(g))
-}
+import { loadGraph, saveGraph } from '../utils/graph'
+import type { Graph, GraphNode } from '../utils/graph'
 
 export default function GraphView() {
   const nodes = useFileTreeStore((s) => s.nodes)

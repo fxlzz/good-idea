@@ -177,27 +177,17 @@ export default function AIPanel({ open }: AIPanelProps) {
 
   return (
     <div
+      className="ai-panel"
       style={{
         width: 360,
         minWidth: 360,
-        borderLeft: '1px solid #f0f0f0',
-        background: '#fff',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
       }}
     >
-      <div
-        style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid #f0f0f0',
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <div className="ai-panel__header">
         <span>AI 助手</span>
         <Tooltip
           title={
@@ -218,11 +208,11 @@ export default function AIPanel({ open }: AIPanelProps) {
         </Tooltip>
       </div>
 
-      <div ref={listRef} style={{ flex: 1, overflow: 'auto', padding: 12 }}>
+      <div ref={listRef} className="ai-panel__list">
         {messages.length === 0 && (
-          <div style={{ color: '#999', fontSize: 12, textAlign: 'center', padding: 24 }}>
+          <div className="ai-panel__empty">
             <p>输入问题，AI 将基于知识库为你解答</p>
-            <p style={{ marginTop: 8, fontSize: 11, color: '#bbb' }}>
+            <p className="ai-panel__empty-hint">
               点击右上角 <DatabaseOutlined /> 按钮建立知识索引
             </p>
           </div>
@@ -237,11 +227,11 @@ export default function AIPanel({ open }: AIPanelProps) {
                 border: 'none',
                 padding: '8px 0',
               }}
+              className="ai-panel__message-item"
             >
               <span
+                className={item.role === 'user' ? 'ai-panel__bubble ai-panel__bubble--user' : 'ai-panel__bubble ai-panel__bubble--assistant'}
                 style={{
-                  background: item.role === 'user' ? '#1677ff' : '#f0f0f0',
-                  color: item.role === 'user' ? '#fff' : '#000',
                   padding: '8px 12px',
                   borderRadius: 8,
                   maxWidth: '90%',
@@ -272,7 +262,7 @@ export default function AIPanel({ open }: AIPanelProps) {
         />
       </div>
 
-      <div style={{ padding: 12, borderTop: '1px solid #f0f0f0' }}>
+      <div className="ai-panel__footer">
         <Input.TextArea
           value={input}
           onChange={(e) => setInput(e.target.value)}

@@ -1,4 +1,5 @@
 import { WebSocketServer } from 'ws'
+import jwt from 'jsonwebtoken'
 import { executeCommand } from './commands.js'
 import { fmt } from './formatter.js'
 import { parseCommand } from './parser.js'
@@ -18,8 +19,32 @@ function send(ws, text) {
 export function attachCliWebSocket(server) {
   const wss = new WebSocketServer({ server, path: '/ws/terminal' })
 
-  wss.on('connection', (ws) => {
-    const state = { cwd: process.cwd() }
+  wss.on('connection', (ws, req) => {
+    // 解析 token，用于绑定当前登录用户；如果失败则拒绝连接
+    let user = null
+    try {
+      const url = new URL(req.url || '', 'ws://localhost')
+      const token = url.searchParams.get('token') || ''
+      const secret = process.env.JWT_SECRET
+      if (token && secret) {
+        const payload = jwt.verify(token, secret)
+        const userId = payload?.sub
+        const username = payload?.username
+        if (userId && username) {
+          user = { id: String(userId), username: String(username) }
+        }
+      }
+    } catch {
+      user = null
+    }
+
+    if (!user) {
+      send(ws, `${fmt.error('未授权：请在登录状态下使用终端 CLI')}\r\n`)
+      ws.close()
+      return
+    }
+
+    const state = { cwd: '/', user }
     send(
       ws,
       `${fmt.success('CLI connected. Run `help` to list commands.')}\r\n${createPrompt(state.cwd)}`,

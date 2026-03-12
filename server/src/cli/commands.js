@@ -14,6 +14,13 @@ import {
   touchFile,
 } from './fsOps.js'
 import { fmt, formatLsRows, formatStatResult } from './formatter.js'
+import {
+  normalizeVirtualPath,
+  vfsListChildren,
+  vfsMkdir,
+  vfsStat,
+  vfsTouch,
+} from './virtualFs.js'
 
 export const COMMANDS = ['cat', 'cd', 'cp', 'echo', 'exit', 'help', 'ls', 'mkdir', 'mv', 'pwd', 'rm', 'stat', 'touch']
 
@@ -48,10 +55,24 @@ function getUsage() {
 }
 
 async function cmdPwd(_, state) {
+  if (state.user) {
+    return state.cwd || '/'
+  }
   return state.cwd
 }
 
 async function cmdLs(parsed, state) {
+  if (state.user) {
+    const cwd = state.cwd || '/'
+    const targetPath = normalizeVirtualPath(cwd, parsed.args[0] || '.')
+    const children = await vfsListChildren(state.user.id, targetPath)
+    const rows = children.map((c) => ({
+      name: c.name,
+      type: c.type === 'folder' ? 'dir' : 'file',
+    }))
+    return formatLsRows(rows)
+  }
+
   const target = resolveInputPath(state.cwd, parsed.args[0] || '.')
   await assertExists(target)
   const type = await getPathType(target)
@@ -65,6 +86,18 @@ async function cmdLs(parsed, state) {
 }
 
 async function cmdCd(parsed, state) {
+  if (state.user) {
+    const cwd = state.cwd || '/'
+    const input = parsed.args[0] || '/'
+    const next = normalizeVirtualPath(cwd, input)
+    if (next !== '/') {
+      // will throw if path 不存在或不是目录
+      await vfsListChildren(state.user.id, next)
+    }
+    state.cwd = next
+    return fmt.success(next)
+  }
+
   const next = parsed.args[0] ? resolveInputPath(state.cwd, parsed.args[0]) : os.homedir()
   await assertExists(next)
   const type = await getPathType(next)
@@ -77,6 +110,18 @@ async function cmdCd(parsed, state) {
 
 async function cmdMkdir(parsed, state) {
   if (parsed.args.length === 0) throw new Error('mkdir 至少需要一个路径')
+  if (state.user) {
+    const cwd = state.cwd || '/'
+    const created = []
+    for (const arg of parsed.args) {
+      const targetDir = path.posix.dirname(arg)
+      const name = path.posix.basename(arg)
+      const basePath = normalizeVirtualPath(cwd, targetDir === '.' ? '.' : targetDir)
+      await vfsMkdir(state.user.id, basePath, name)
+      created.push(arg)
+    }
+    return fmt.success(`created ${created.length} path(s)`)
+  }
   const targets = parsed.args.map((arg) => resolveInputPath(state.cwd, arg))
   await mkdirPaths(targets, { recursive: parsed.options.has('p') })
   return fmt.success(`created ${targets.length} path(s)`)
@@ -96,6 +141,16 @@ async function cmdRm(parsed, state) {
 
 async function cmdTouch(parsed, state) {
   if (parsed.args.length === 0) throw new Error('touch 至少需要一个文件路径')
+  if (state.user) {
+    const cwd = state.cwd || '/'
+    for (const arg of parsed.args) {
+      const targetDir = path.posix.dirname(arg)
+      const name = path.posix.basename(arg)
+      const basePath = normalizeVirtualPath(cwd, targetDir === '.' ? '.' : targetDir)
+      await vfsTouch(state.user.id, basePath, name)
+    }
+    return fmt.success(`updated ${parsed.args.length} file(s)`)
+  }
   for (const arg of parsed.args) {
     await touchFile(resolveInputPath(state.cwd, arg))
   }
@@ -135,9 +190,19 @@ async function cmdEcho(parsed) {
 }
 
 async function cmdStat(parsed, state) {
+  const recursive = parsed.options.has('r')
+  if (state.user) {
+    const cwd = state.cwd || '/'
+    const targetPath = normalizeVirtualPath(cwd, parsed.args[0] || '.')
+    const totals = await vfsStat(state.user.id, targetPath, { recursive })
+    return formatStatResult({
+      path: targetPath,
+      recursive,
+      ...totals,
+    })
+  }
   const target = resolveInputPath(state.cwd, parsed.args[0] || '.')
   await assertExists(target)
-  const recursive = parsed.options.has('r')
   const totals = await countPathStats(target, { recursive })
   return formatStatResult({
     path: target,

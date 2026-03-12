@@ -2,14 +2,17 @@ import { useEffect, useRef } from "react";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import "xterm/css/xterm.css";
+import { useAuthStore } from "../store/auth";
 
-const WS_URL = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws/terminal`;
+const baseWsUrl = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws/terminal`;
 
 export default function TerminalPanel() {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef("");
 
   useEffect(() => {
+    const { token } = useAuthStore.getState();
+    const wsUrl = token ? `${baseWsUrl}?token=${encodeURIComponent(token)}` : baseWsUrl;
     const el = containerRef.current;
     if (!el) return;
 
@@ -22,7 +25,7 @@ export default function TerminalPanel() {
     term.open(el);
     fitAddon.fit();
 
-    const ws = new WebSocket(WS_URL);
+    const ws = new WebSocket(wsUrl);
     ws.onopen = () => term.writeln("\n终端已连接");
     ws.onmessage = (ev) => {
       if (typeof ev.data === "string") term.write(ev.data);

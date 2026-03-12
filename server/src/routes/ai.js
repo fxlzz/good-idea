@@ -24,7 +24,7 @@ let embedStatus = { running: false, lastResult: null, lastError: null }
 
 router.post('/chat', async (req, res) => {
   const userId = req.user.id
-  const { message, history = [] } = req.body || {}
+  const { message, history = [], useRag = true } = req.body || {}
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message required' })
   }
@@ -42,31 +42,34 @@ router.post('/chat', async (req, res) => {
     let context = ''
     let sources = []
 
-    try {
-      const queryEmbedding = await getEmbedding(message)
-      const col = await getCollection()
-      const results = await col.query({
-        queryEmbeddings: [queryEmbedding],
-        nResults: 5,
-        where: { userId },
-      })
+    let ragUsed = false
 
-      if (results.documents?.[0]?.length > 0) {
-        const docs = results.documents[0]
-        const metas = results.metadatas[0]
-        context = docs
-          .map((doc, i) => {
-            const meta = metas[i]
-            sources.push(meta?.fileName || '未知文件')
-            return `[来源: ${meta?.fileName || '未知'}]\n${doc}`
-          })
-          .join('\n\n')
+    if (useRag) {
+      try {
+        const queryEmbedding = await getEmbedding(message)
+        const col = await getCollection()
+        const results = await col.query({
+          queryEmbeddings: [queryEmbedding],
+          nResults: 5,
+          where: { userId },
+        })
+
+        if (results.documents?.[0]?.length > 0) {
+          const docs = results.documents[0]
+          const metas = results.metadatas[0]
+          context = docs
+            .map((doc, i) => {
+              const meta = metas[i]
+              sources.push(meta?.fileName || '未知文件')
+              return `[来源: ${meta?.fileName || '未知'}]\n${doc}`
+            })
+            .join('\n\n')
+        }
+        ragUsed = context.length > 0
+      } catch (ragErr) {
+        console.warn('RAG retrieval failed, falling back to direct chat:', ragErr.message)
       }
-    } catch (ragErr) {
-      console.warn('RAG retrieval failed, falling back to direct chat:', ragErr.message)
     }
-
-    const ragUsed = context.length > 0
 
     const systemContent = context
       ? SYSTEM_PROMPT_TEMPLATE.replace('{context}', context)
@@ -109,7 +112,9 @@ router.post('/chat', async (req, res) => {
       res.write(`__SOURCES__${JSON.stringify(uniqueSources)}__END_SOURCES__`)
     }
     if (!ragUsed) {
-      const reason = '知识库未就绪或未检索到相关内容。请先点击「建立知识索引」，并确保 ChromaDB 已启动。'
+      const reason = useRag
+        ? '知识库未就绪或未检索到相关内容。请先点击「建立知识索引」，并确保 ChromaDB 已启动。'
+        : '已根据设置关闭知识库检索，仅使用大模型自身知识回答。'
       res.write(`__RAG_STATUS__${JSON.stringify({ used: false, reason })}__END_RAG_STATUS__`)
     } else {
       res.write(`__RAG_STATUS__${JSON.stringify({ used: true })}__END_RAG_STATUS__`)

@@ -212,7 +212,7 @@ router.delete('/:id', async (req, res) => {
     res.json({ ok: true })
 
     for (const did of toDelete) {
-      removeFileEmbeddings(did, userId).catch(() => {})
+      removeFileEmbeddings(did, userId).catch(() => { })
     }
     return
   }
@@ -237,6 +237,10 @@ router.delete('/:id', async (req, res) => {
     transaction(toDelete)
   } catch (e) {
     return res.status(500).json({ error: String(e.message || e) })
+  }
+
+  for (const did of toDelete) {
+    removeFileEmbeddings(did, userId).catch(() => { })
   }
 
   res.json({ ok: true })

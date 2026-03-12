@@ -10,7 +10,23 @@ function getBaseUrl() {
   return process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 }
 
-const EMBEDDABLE_EXTS = new Set(['.md', '.txt', '.docx', '.doc', '.xlsx', '.pdf', ''])
+// 文件扩展名白名单：所有按纯文本处理的类型
+const EMBEDDABLE_EXTS = new Set([
+  '.md',
+  '.txt',
+  '.docx',
+  '.doc',
+  '.xlsx',
+  '.pdf',
+  '.js',
+  '.jsx',
+  '.ts',
+  '.tsx',
+  '.json',
+  '.html',
+  '.css',
+  '',
+])
 
 export function isEmbeddable(ext) {
   return EMBEDDABLE_EXTS.has(ext ?? '')

@@ -53,6 +53,11 @@ body {
   height: 100vh;
 }
 
+/* 侧边栏标题栏图标按钮圆角 */
+.ide-sidebar-header-actions span {
+  border-radius: 10px !important;
+}
+
 .markdown-body {
   color: var(--ide-text);
 }

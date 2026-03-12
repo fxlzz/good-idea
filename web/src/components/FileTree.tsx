@@ -16,28 +16,13 @@ import type { MenuProps } from 'antd'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useBookmarksStore } from '../store/bookmarks'
 import { useFileTreeStore } from '../store/fileTree'
-
-let _uploadLimitBytes: number | null = null
-
-async function getUploadLimitBytes(): Promise<number> {
-  if (_uploadLimitBytes !== null) return _uploadLimitBytes
-  try {
-    const res = await fetch('/api/config/upload-limit')
-    if (res.ok) {
-      const data = await res.json()
-      _uploadLimitBytes = data.bytes ?? 10 * 1024 * 1024
-      return _uploadLimitBytes
-    }
-  } catch { /* fallback */ }
-  _uploadLimitBytes = 10 * 1024 * 1024
-  return _uploadLimitBytes
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)}MB`
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)}KB`
-  return `${bytes}B`
-}
+import { useUploadFile } from '../hooks/useUploadFile'
+import {
+  ensureFileExtension,
+  getExtension,
+  isAllowedExtension,
+  UNSUPPORTED_FILE_TYPE_MSG,
+} from '../utils/fileTypes'
 
 function generateId(): string {
   return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
@@ -61,12 +46,20 @@ const NewNodeInput = memo(function NewNodeInput({
 
   const commit = useCallback(() => {
     const trimmed = value.trim()
-    let finalName = trimmed
-
-    if (!finalName) {
-      finalName = type === 'file' ? '未命名.md' : '未命名'
+    if (!trimmed) {
+      onDone()
+      return
     }
-
+    let finalName = trimmed
+    if (type === 'file') {
+      finalName = ensureFileExtension(trimmed)
+      const ext = getExtension(finalName)
+      if (!isAllowedExtension(ext)) {
+        message.error(UNSUPPORTED_FILE_TYPE_MSG)
+        onDone()
+        return
+      }
+    }
     addNode({ id: generateId(), name: finalName, type, parentId })
     onDone()
   }, [value, type, parentId, addNode, onDone])
@@ -119,10 +112,8 @@ const NodeTitle = memo(function NodeTitle({
   const toggleBookmark = useBookmarksStore((s) => s.toggle)
   const updateNode = useFileTreeStore((s) => s.updateNode)
   const deleteNode = useFileTreeStore((s) => s.deleteNode)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
-  const addNode = useFileTreeStore((s) => s.addNode)
-  const setExpanded = useFileTreeStore((s) => s.setExpanded)
+  const { inputRef: fileInputRef, triggerUpload, handleFileChange } = useUploadFile(nodeId)
   const [editValue, setEditValue] = useState(name)
 
   useEffect(() => {
@@ -146,7 +137,7 @@ const NodeTitle = memo(function NodeTitle({
           onNewFolder()
           break
         case 'upload':
-          fileInputRef.current?.click()
+          triggerUpload()
           break
         case 'rename':
           onStartRename()
@@ -159,7 +150,7 @@ const NodeTitle = memo(function NodeTitle({
           break
       }
     },
-    [nodeId, deleteNode, toggleBookmark, onStartRename, onNewFile, onNewFolder],
+    [nodeId, deleteNode, toggleBookmark, onStartRename, onNewFile, onNewFolder, triggerUpload],
   )
 
   const handleFileMenu: MenuProps['onClick'] = useCallback(
@@ -180,55 +171,6 @@ const NodeTitle = memo(function NodeTitle({
     [nodeId, toggleBookmark, onStartRename, deleteNode],
   )
 
-  const handleUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (!file) return
-
-      const limitBytes = await getUploadLimitBytes()
-      const estimatedBodySize = file.size * 1.4
-      if (estimatedBodySize > limitBytes) {
-        message.error(
-          `文件 "${file.name}" 大小为 ${formatBytes(file.size)}，超过上传限制 ${formatBytes(limitBytes)}，请选择更小的文件`,
-        )
-        e.target.value = ''
-        return
-      }
-
-      const ext = file.name.includes('.') ? `.${file.name.split('.').pop()}`.toLowerCase() : ''
-      const reader = new FileReader()
-
-      reader.onload = () => {
-        let content: string | null = null
-
-        if (ext === '.md' || ext === '.txt' || !ext) {
-          content = typeof reader.result === 'string' ? reader.result : ''
-        } else {
-          const result = typeof reader.result === 'string' ? reader.result : ''
-          const base64 = result.startsWith('data:') ? result.split(',')[1] ?? '' : result
-          content = base64
-        }
-
-        addNode({
-          id: generateId(),
-          name: file.name,
-          type: 'file',
-          parentId: nodeId,
-          content: content ?? '',
-        })
-        setExpanded(nodeId, true)
-      }
-
-      if (ext === '.md' || ext === '.txt' || !ext) {
-        reader.readAsText(file)
-      } else {
-        reader.readAsDataURL(file)
-      }
-      e.target.value = ''
-    },
-    [nodeId, addNode, setExpanded],
-  )
-
   const handleBookmarkClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -239,11 +181,25 @@ const NodeTitle = memo(function NodeTitle({
 
   const handleSaveRename = useCallback(() => {
     const trimmed = editValue.trim()
-    if (trimmed && trimmed !== name) {
-      updateNode(nodeId, { name: trimmed })
+    if (!trimmed) {
+      onStopRename()
+      return
+    }
+    let finalName = trimmed
+    if (type === 'file') {
+      finalName = ensureFileExtension(trimmed)
+      const ext = getExtension(finalName)
+      if (!isAllowedExtension(ext)) {
+        message.error(UNSUPPORTED_FILE_TYPE_MSG)
+        onStopRename()
+        return
+      }
+    }
+    if (finalName !== name) {
+      updateNode(nodeId, { name: finalName })
     }
     onStopRename()
-  }, [editValue, name, nodeId, updateNode, onStopRename])
+  }, [editValue, name, nodeId, type, updateNode, onStopRename])
 
   const handleRenameKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -340,7 +296,7 @@ const NodeTitle = memo(function NodeTitle({
           ref={fileInputRef}
           type="file"
           style={{ display: 'none' }}
-          onChange={handleUpload}
+          onChange={handleFileChange}
         />
       </>
     )

@@ -1,14 +1,15 @@
 import type React from "react";
-import { FileAddOutlined, FolderAddOutlined } from "@ant-design/icons";
+import { FileAddOutlined, FolderAddOutlined, UploadOutlined } from "@ant-design/icons";
 import { Dropdown, Layout, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import { useEffect, useRef, useState } from "react";
 import FileTree from "../components/FileTree";
+import { useUploadFile } from "../hooks/useUploadFile";
 import { useFileTreeStore } from "../store/fileTree";
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 400;
-const SIDEBAR_DEFAULT = 260;
+const SIDEBAR_DEFAULT = 210;
 
 function generateId(): string {
   return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -21,13 +22,16 @@ type ResizableSidebarProps = {
 
 export default function ResizableSidebar({ width, onWidthChange }: ResizableSidebarProps) {
   const [dragging, setDragging] = useState(false);
+  const [rootMenuOpen, setRootMenuOpen] = useState(false);
   const startX = useRef(0);
   const startW = useRef(0);
   const requestNewRootNode = useFileTreeStore((s) => s.requestNewRootNode);
+  const { inputRef: uploadInputRef, triggerUpload, handleFileChange } = useUploadFile(null);
 
   const rootMenuItems: MenuProps["items"] = [
     { key: "newFile", icon: <FileAddOutlined />, label: "新建文件" },
     { key: "newFolder", icon: <FolderAddOutlined />, label: "新建文件夹" },
+    { key: "upload", icon: <UploadOutlined />, label: "上传文件" },
   ];
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -62,10 +66,13 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   };
 
   const handleRootMenuClick: MenuProps["onClick"] = ({ key }) => {
+    setRootMenuOpen(false);
     if (key === "newFile") {
       handleNewFile();
     } else if (key === "newFolder") {
       handleNewFolder();
+    } else if (key === "upload") {
+      triggerUpload();
     }
   };
 
@@ -84,11 +91,16 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
         }}
       >
         <Dropdown
+          open={rootMenuOpen}
+          onOpenChange={setRootMenuOpen}
           menu={{ items: rootMenuItems, onClick: handleRootMenuClick }}
           trigger={["contextMenu"]}
           getPopupContainer={() => document.body}
         >
-          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", height: "100%" }}
+            onContextMenu={() => setRootMenuOpen(true)}
+          >
             <div
               style={{
                 padding: "8px 10px",
@@ -99,10 +111,30 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
               }}
             >
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ide-text)" }}>文件</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <div className="ide-sidebar-header-actions" style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Tooltip title="上传文件">
+                  <span
+                    style={{
+                      cursor: "pointer",
+                      padding: 4,
+                      color: "var(--ide-text-muted)",
+                      borderRadius: 10,
+                    }}
+                    onClick={triggerUpload}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <UploadOutlined style={{ fontSize: 14 }} />
+                  </span>
+                </Tooltip>
                 <Tooltip title="新建文件">
                   <span
-                    style={{ cursor: "pointer", padding: 4, color: "var(--ide-text-muted)" }}
+                    style={{
+                      cursor: "pointer",
+                      padding: 4,
+                      color: "var(--ide-text-muted)",
+                      borderRadius: 10,
+                    }}
                     onClick={handleNewFile}
                     role="button"
                     tabIndex={0}
@@ -112,7 +144,12 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
                 </Tooltip>
                 <Tooltip title="新建文件夹">
                   <span
-                    style={{ cursor: "pointer", padding: 4, color: "var(--ide-text-muted)" }}
+                    style={{
+                      cursor: "pointer",
+                      padding: 4,
+                      color: "var(--ide-text-muted)",
+                      borderRadius: 10,
+                    }}
                     onClick={handleNewFolder}
                     role="button"
                     tabIndex={0}
@@ -122,6 +159,12 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
                 </Tooltip>
               </div>
             </div>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
             <div
               style={{
                 flex: 1,

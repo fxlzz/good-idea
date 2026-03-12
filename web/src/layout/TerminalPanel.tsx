@@ -1,73 +1,84 @@
-import { useEffect, useRef } from 'react'
-import { Terminal } from 'xterm'
-import { FitAddon } from 'xterm-addon-fit'
-import 'xterm/css/xterm.css'
+import { useEffect, useRef } from "react";
+import { Terminal } from "xterm";
+import { FitAddon } from "xterm-addon-fit";
+import "xterm/css/xterm.css";
 
-const WS_URL = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws/terminal`
+const WS_URL = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws/terminal`;
 
 export default function TerminalPanel() {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const terminalRef = useRef<Terminal | null>(null)
-  const fitRef = useRef<FitAddon | null>(null)
-  const wsRef = useRef<WebSocket | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef("");
 
   useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
+    const el = containerRef.current;
+    if (!el) return;
 
     const term = new Terminal({
       cursorBlink: true,
-      theme: { background: '#1e1e1e', foreground: '#d4d4d4' },
-    })
-    const fitAddon = new FitAddon()
-    term.loadAddon(fitAddon)
-    term.open(el)
-    fitAddon.fit()
-    terminalRef.current = term
-    fitRef.current = fitAddon
+      theme: { background: "#0f1115", foreground: "#d4d4d4" },
+    });
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(el);
+    fitAddon.fit();
 
-    const ws = new WebSocket(WS_URL)
-    ws.binaryType = 'arraybuffer'
-    ws.onopen = () => {
-      term.writeln('终端已连接')
-    }
+    const ws = new WebSocket(WS_URL);
+    ws.onopen = () => term.writeln("\n终端已连接");
     ws.onmessage = (ev) => {
-      const data = ev.data
-      if (typeof data === 'string') term.write(data)
-      else term.write(new Uint8Array(data))
-    }
-    ws.onclose = () => {
-      term.writeln('\r\n连接已关闭')
-    }
+      if (typeof ev.data === "string") term.write(ev.data);
+    };
+    ws.onclose = () => term.writeln("\r\n终端已断开");
     ws.onerror = () => {
-      term.writeln('\r\n连接错误，请确保后端已启动且支持 WebSocket /ws/terminal')
-    }
-    term.onData((data) => {
-      if (ws.readyState === 1) ws.send(data)
-    })
-    wsRef.current = ws
+      term.writeln("\r\n连接错误，请检查服务是否启动");
+    };
 
-    const onResize = () => fitAddon.fit()
-    window.addEventListener('resize', onResize)
+    term.onData((data) => {
+      if (data === "\r") {
+        const input = inputRef.current;
+        term.write("\r\n");
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "command", input }));
+        }
+        inputRef.current = "";
+        return;
+      }
+
+      if (data === "\u007F") {
+        if (inputRef.current.length > 0) {
+          inputRef.current = inputRef.current.slice(0, -1);
+          term.write("\b \b");
+        }
+        return;
+      }
+
+      if (/^[\x20-\x7E]$/.test(data)) {
+        inputRef.current += data;
+        term.write(data);
+      }
+    });
+
+    const onResize = () => fitAddon.fit();
+    window.addEventListener("resize", onResize);
+    const resizeObserver = new ResizeObserver(() => fitAddon.fit());
+    resizeObserver.observe(el);
 
     return () => {
-      window.removeEventListener('resize', onResize)
-      ws.close()
-      term.dispose()
-      terminalRef.current = null
-      fitRef.current = null
-      wsRef.current = null
-    }
-  }, [])
+      window.removeEventListener("resize", onResize);
+      resizeObserver.disconnect();
+      ws.close();
+      term.dispose();
+    };
+  }, []);
 
   return (
     <div
+      className="terminal-panel"
       ref={containerRef}
       style={{
         height: '100%',
         padding: 8,
-        background: '#1e1e1e',
+        background: "transparent",
       }}
     />
-  )
+  );
 }

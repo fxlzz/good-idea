@@ -5,7 +5,8 @@ import {
   FileTextOutlined,
   FormOutlined,
 } from '@ant-design/icons'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useAuthStore } from '../store/auth'
 import { useFileTreeStore } from '../store/fileTree'
 import { useLayoutStore } from '../store/layout'
@@ -21,7 +22,8 @@ function formatDate(ts: number): string {
 
 type QuickAction = {
   icon: ReactNode
-  iconBg: string
+  fg: string
+  border: string
   title: string
   subtitle: string
   onClick: () => void
@@ -37,134 +39,97 @@ export default function WelcomePage() {
 
   const recentFiles = getRecentFiles(5)
 
-  const handleNewFile = () => {
+  const handleNewFile = useCallback(() => {
     const id = generateId()
     addNode({ id, name: '未命名.md', type: 'file', parentId: null, content: '' })
     openFile(id)
-  }
+  }, [addNode, openFile])
 
-  const actions: QuickAction[] = [
-    {
-      icon: <FileAddOutlined style={{ fontSize: 20 }} />,
-      iconBg: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-      title: '新建文件',
-      subtitle: '创建 Markdown 文档',
-      onClick: handleNewFile,
+  const handleOpenWhiteboard = useCallback(() => openSpecialTab('whiteboard'), [openSpecialTab])
+  const handleOpenGraph = useCallback(() => openSpecialTab('graph'), [openSpecialTab])
+  const handleToggleTerminal = useCallback(() => toggleTerminal(), [toggleTerminal])
+
+  const actions: QuickAction[] = useMemo(
+    () => [
+      {
+        icon: <FileAddOutlined style={{ fontSize: 20 }} />,
+        fg: '#407abd',
+        border: '#4b9cf5',
+        title: '新建文件',
+        subtitle: '创建 Markdown 文档',
+        onClick: handleNewFile,
+      },
+      {
+        icon: <FormOutlined style={{ fontSize: 20 }} />,
+        fg: '#a78bfa',
+        border: '#a78bfa',
+        title: '打开白板',
+        subtitle: '自由绘图与记录',
+        onClick: handleOpenWhiteboard,
+      },
+      {
+        icon: <ApartmentOutlined style={{ fontSize: 20 }} />,
+        fg: '#34d399',
+        border: '#34d399',
+        title: '知识图谱',
+        subtitle: '查看文件关联',
+        onClick: handleOpenGraph,
+      },
+      {
+        icon: <CodeOutlined style={{ fontSize: 20 }} />,
+        fg: '#e2ae24',
+        border: '#fbbf24',
+        title: '打开终端',
+        subtitle: 'CLI 命令行工具',
+        onClick: handleToggleTerminal,
+      },
+    ],
+    [handleNewFile, handleOpenWhiteboard, handleOpenGraph, handleToggleTerminal],
+  )
+
+  const handleActionKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>, onClick: () => void) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onClick()
+      }
     },
-    {
-      icon: <FormOutlined style={{ fontSize: 20 }} />,
-      iconBg: 'linear-gradient(135deg, #3b82f6, #60a5fa)',
-      title: '打开白板',
-      subtitle: '自由绘图与记录',
-      onClick: () => openSpecialTab('whiteboard'),
-    },
-    {
-      icon: <ApartmentOutlined style={{ fontSize: 20 }} />,
-      iconBg: 'linear-gradient(135deg, #10b981, #34d399)',
-      title: '知识图谱',
-      subtitle: '查看文件关联',
-      onClick: () => openSpecialTab('graph'),
-    },
-    {
-      icon: <CodeOutlined style={{ fontSize: 20 }} />,
-      iconBg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
-      title: '打开终端',
-      subtitle: 'CLI 命令行工具',
-      onClick: toggleTerminal,
-    },
-  ]
+    [],
+  )
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--ide-bg)',
-        overflow: 'auto',
-        padding: '40px 24px',
-        gap: 32,
-      }}
-    >
+    <div className="welcome-page">
       {/* Logo + Welcome */}
-      <div style={{ textAlign: 'center' }}>
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 16,
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 16,
-          }}
-        >
-          <FileTextOutlined style={{ fontSize: 28, color: '#fff' }} />
-        </div>
-        <h2 style={{ margin: 0, color: 'var(--ide-text)', fontSize: 22, fontWeight: 600 }}>
+      <div className="welcome-page__header">
+        <h2 className="welcome-page__title">
           欢迎回来，{user?.username ?? 'admin'} 👋
         </h2>
-        <p style={{ margin: '8px 0 0', color: 'var(--ide-text-muted)', fontSize: 14 }}>
+        <p className="welcome-page__subtitle">
           选择一个文件开始，或使用下方快速入口
         </p>
       </div>
 
       {/* Quick Actions 2x2 */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 12,
-          width: '100%',
-          maxWidth: 520,
-        }}
-      >
+      <div className="welcome-page__actions">
         {actions.map((a) => (
           <div
             key={a.title}
             onClick={a.onClick}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && a.onClick()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '16px 18px',
-              borderRadius: 10,
-              background: 'var(--ide-panel)',
-              border: '1px solid var(--ide-sidebar-border)',
-              cursor: 'pointer',
-              transition: 'background .15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ide-hover)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--ide-panel)' }}
+            onKeyDown={(e) => handleActionKeyDown(e, a.onClick)}
+            className="welcome-action"
+            style={
+              {
+                ['--qa-fg' as any]: a.fg,
+                ['--qa-border' as any]: a.border,
+              } as any
+            }
           >
-            <span
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: a.iconBg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                flexShrink: 0,
-              }}
-            >
-              {a.icon}
-            </span>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ide-text)' }}>
-                {a.title}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--ide-text-muted)', marginTop: 2 }}>
-                {a.subtitle}
-              </div>
+            <span className="welcome-action__icon">{a.icon}</span>
+            <div className="welcome-action__content">
+              <div className="welcome-action__title">{a.title}</div>
+              <div className="welcome-action__subtitle">{a.subtitle}</div>
             </div>
           </div>
         ))}
@@ -172,42 +137,23 @@ export default function WelcomePage() {
 
       {/* Recent Files */}
       {recentFiles.length > 0 && (
-        <div style={{ width: '100%', maxWidth: 520 }}>
-          <div style={{ fontSize: 13, color: 'var(--ide-text-muted)', marginBottom: 8 }}>
+        <div className="welcome-page__recent">
+          <div className="welcome-page__recent-label">
             最近文件
           </div>
-          <div
-            style={{
-              borderRadius: 10,
-              background: 'var(--ide-panel)',
-              border: '1px solid var(--ide-sidebar-border)',
-              overflow: 'hidden',
-            }}
-          >
+          <div className="welcome-page__recent-list">
             {recentFiles.map((f) => (
               <div
                 key={f.id}
                 onClick={() => openFile(f.id)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && openFile(f.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 16px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid var(--ide-sidebar-border)',
-                  transition: 'background .15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ide-hover)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                onKeyDown={(e) => handleActionKeyDown(e, () => openFile(f.id))}
+                className="welcome-recent-item"
               >
-                <FileTextOutlined style={{ fontSize: 14, color: 'var(--ide-text-muted)' }} />
-                <span style={{ flex: 1, fontSize: 13, color: 'var(--ide-text)' }}>{f.name}</span>
-                <span style={{ fontSize: 12, color: 'var(--ide-text-muted)', flexShrink: 0 }}>
-                  {formatDate(f.updatedAt)}
-                </span>
+                <FileTextOutlined className="welcome-recent-item__icon" />
+                <span className="welcome-recent-item__name">{f.name}</span>
+                <span className="welcome-recent-item__date">{formatDate(f.updatedAt)}</span>
               </div>
             ))}
           </div>

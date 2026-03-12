@@ -92,8 +92,33 @@ export default function TabContent({ nodeId }: TabContentProps) {
   }
 
   return (
-    <div style={{ padding: 24, height: '100%', overflow: 'auto' }}>
-      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</pre>
+    <div
+      style={{
+        padding: 24,
+        height: '100%',
+        overflow: 'auto',
+        background: 'var(--ide-bg)',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 780,
+          margin: '0 auto',
+          padding: 20,
+          borderRadius: 10,
+          background: '#f7f7f9',
+          color: '#111827',
+          boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.06)',
+          fontFamily:
+            'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontSize: 13,
+          lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        {content}
+      </div>
     </div>
   )
 }

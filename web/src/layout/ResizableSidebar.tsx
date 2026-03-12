@@ -32,6 +32,7 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const startW = useRef(0);
   const requestNewRootNode = useFileTreeStore((s) => s.requestNewRootNode);
   const syncFromServer = useFileTreeStore((s) => s.syncFromServer);
+  const syncing = useFileTreeStore((s) => s.syncing);
   const { inputRef: uploadInputRef, triggerUpload, handleFileChange } = useUploadFile(null);
 
   const rootMenuItems: MenuProps["items"] = [
@@ -121,7 +122,7 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
                 className="ide-sidebar-header-actions"
                 style={{ display: "flex", alignItems: "center", gap: 2 }}
               >
-                <Tooltip title="刷新">
+                <Tooltip title={syncing ? "正在刷新…" : "刷新"}>
                   <span
                     style={{
                       cursor: "pointer",
@@ -129,11 +130,13 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
                       color: "var(--ide-text-muted)",
                       borderRadius: 10,
                     }}
-                    onClick={() => syncFromServer()}
+                    onClick={() => {
+                      if (!syncing) void syncFromServer();
+                    }}
                     role="button"
                     tabIndex={0}
                   >
-                    <ReloadOutlined style={{ fontSize: 14 }} />
+                    <ReloadOutlined style={{ fontSize: 14 }} spin={syncing} />
                   </span>
                 </Tooltip>
                 <Tooltip title="上传文件">

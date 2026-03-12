@@ -27,6 +27,16 @@ const editorPreviewStyle: React.CSSProperties = {
   color: 'var(--ide-text)',
 }
 
+const markdownCardStyle: React.CSSProperties = {
+  maxWidth: 780,
+  margin: '0 auto',
+  padding: 24,
+  borderRadius: 12,
+  background: '#f7f7f9',
+  color: '#111827',
+  boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.06)',
+}
+
 export default function MdViewer({
   content,
   onChange,
@@ -55,14 +65,16 @@ export default function MdViewer({
 
   if (readOnly) {
     return (
-      <div className="markdown-body" style={{ padding: 24, background: 'var(--ide-bg)', color: 'var(--ide-text)' }}>
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          rehypePlugins={[rehypeHighlight]}
-          components={markdownComponents}
-        >
-          {content}
-        </ReactMarkdown>
+      <div style={editorPreviewStyle}>
+        <div className="markdown-body" style={markdownCardStyle}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+            components={markdownComponents}
+          >
+            {content}
+          </ReactMarkdown>
+        </div>
       </div>
     )
   }
@@ -109,14 +121,16 @@ export default function MdViewer({
         </div>
       )}
       {showPreview && (
-        <div style={editorPreviewStyle} className="markdown-body">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={markdownComponents}
-          >
-            {content}
-          </ReactMarkdown>
+        <div style={editorPreviewStyle}>
+          <div className="markdown-body" style={markdownCardStyle}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={markdownComponents}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>

@@ -1,5 +1,10 @@
 import type React from "react";
-import { FileAddOutlined, FolderAddOutlined, UploadOutlined } from "@ant-design/icons";
+import {
+  FileAddOutlined,
+  FolderAddOutlined,
+  ReloadOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import { Dropdown, Layout, Tooltip } from "antd";
 import type { MenuProps } from "antd";
 import { useEffect, useRef, useState } from "react";
@@ -26,6 +31,8 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
   const startX = useRef(0);
   const startW = useRef(0);
   const requestNewRootNode = useFileTreeStore((s) => s.requestNewRootNode);
+  const syncFromServer = useFileTreeStore((s) => s.syncFromServer);
+  const syncing = useFileTreeStore((s) => s.syncing);
   const { inputRef: uploadInputRef, triggerUpload, handleFileChange } = useUploadFile(null);
 
   const rootMenuItems: MenuProps["items"] = [
@@ -111,7 +118,27 @@ export default function ResizableSidebar({ width, onWidthChange }: ResizableSide
               }}
             >
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ide-text)" }}>文件</span>
-              <div className="ide-sidebar-header-actions" style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <div
+                className="ide-sidebar-header-actions"
+                style={{ display: "flex", alignItems: "center", gap: 2 }}
+              >
+                <Tooltip title={syncing ? "正在刷新…" : "刷新"}>
+                  <span
+                    style={{
+                      cursor: "pointer",
+                      padding: 4,
+                      color: "var(--ide-text-muted)",
+                      borderRadius: 10,
+                    }}
+                    onClick={() => {
+                      if (!syncing) void syncFromServer();
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <ReloadOutlined style={{ fontSize: 14 }} spin={syncing} />
+                  </span>
+                </Tooltip>
                 <Tooltip title="上传文件">
                   <span
                     style={{

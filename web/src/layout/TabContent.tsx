@@ -4,12 +4,21 @@ import DocxViewer from '../components/viewers/DocxViewer'
 import MdViewer from '../components/viewers/MdViewer'
 import PdfViewer from '../components/viewers/PdfViewer'
 import XlsxViewer from '../components/viewers/XlsxViewer'
+import { replaceOutgoingLinks } from '../utils/graph'
+import {
+  buildRelativeMarkdownLink,
+  getReferencedMarkdownNodeIds,
+  parseRelativeMarkdownRef,
+  resolveRefToNodeId,
+} from '../utils/markdownLinks'
 
 type TabContentProps = { nodeId: string }
 
 export default function TabContent({ nodeId }: TabContentProps) {
   const node = useFileTreeStore((s) => s.getNode(nodeId))
+  const nodes = useFileTreeStore((s) => s.nodes)
   const updateNode = useFileTreeStore((s) => s.updateNode)
+  const openFile = useFileTreeStore((s) => s.openFile)
   const docViewMode = useLayoutStore((s) => s.docViewMode)
 
   if (!node || node.type !== 'file') return <div style={{ padding: 24 }}>文件不存在</div>
@@ -19,12 +28,51 @@ export default function TabContent({ nodeId }: TabContentProps) {
 
   const handleMdChange = (newContent: string) => {
     updateNode(nodeId, { content: newContent })
+    const referencedNodeIds = getReferencedMarkdownNodeIds(nodeId, newContent, nodes)
+    replaceOutgoingLinks(nodeId, referencedNodeIds, nodes)
+  }
+
+  const handleDropNodeReference = (
+    droppedNodeId: string,
+    selectionStart: number,
+    selectionEnd: number,
+  ) => {
+    if (droppedNodeId === nodeId) return
+    const droppedNode = nodes[droppedNodeId]
+    if (!droppedNode || droppedNode.type !== 'file' || (droppedNode.ext ?? '').toLowerCase() !== '.md') {
+      return
+    }
+
+    const markdownLink = buildRelativeMarkdownLink(nodeId, droppedNodeId, nodes)
+    if (!markdownLink) return
+
+    const safeStart = Math.max(0, Math.min(selectionStart, content.length))
+    const safeEnd = Math.max(safeStart, Math.min(selectionEnd, content.length))
+    const nextContent = `${content.slice(0, safeStart)}${markdownLink}${content.slice(safeEnd)}`
+    handleMdChange(nextContent)
+  }
+
+  const handleOpenReference = (href: string) => {
+    const relativeRef = parseRelativeMarkdownRef(href)
+    if (!relativeRef) return false
+    const targetNodeId = resolveRefToNodeId(nodeId, relativeRef, nodes)
+    if (!targetNodeId) return false
+    const targetNode = nodes[targetNodeId]
+    if (!targetNode || targetNode.type !== 'file') return false
+    openFile(targetNodeId)
+    return true
   }
 
   if (ext === '.md') {
     return (
       <div style={{ height: '100%', overflow: 'hidden' }}>
-        <MdViewer content={content} onChange={handleMdChange} viewMode={docViewMode} />
+        <MdViewer
+          content={content}
+          onChange={handleMdChange}
+          onDropNodeReference={handleDropNodeReference}
+          onOpenReference={handleOpenReference}
+          viewMode={docViewMode}
+        />
       </div>
     )
   }
@@ -44,8 +92,33 @@ export default function TabContent({ nodeId }: TabContentProps) {
   }
 
   return (
-    <div style={{ padding: 24, height: '100%', overflow: 'auto' }}>
-      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{content}</pre>
+    <div
+      style={{
+        padding: 24,
+        height: '100%',
+        overflow: 'auto',
+        background: 'var(--ide-bg)',
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 780,
+          margin: '0 auto',
+          padding: 20,
+          borderRadius: 10,
+          background: '#f7f7f9',
+          color: '#111827',
+          boxShadow: '0 0 0 1px rgba(15, 23, 42, 0.06)',
+          fontFamily:
+            'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontSize: 13,
+          lineHeight: 1.6,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+        }}
+      >
+        {content}
+      </div>
     </div>
   )
 }

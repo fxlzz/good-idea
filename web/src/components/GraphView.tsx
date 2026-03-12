@@ -1,31 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import { useFileTreeStore } from '../store/fileTree'
-
-const STORAGE_KEY = 'good-idea-graph'
-
-type GraphNode = { id: string; name: string }
-type GraphLink = { source: string; target: string }
-type Graph = { nodes: GraphNode[]; links: GraphLink[] }
-
-function loadGraph(): Graph {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Graph
-      if (parsed.nodes && parsed.links) return parsed
-    }
-  } catch {
-    // ignore
-  }
-  return { nodes: [], links: [] }
-}
-
-function saveGraph(g: Graph) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(g))
-}
+import { loadGraph, saveGraph } from '../utils/graph'
+import type { Graph, GraphNode } from '../utils/graph'
 
 export default function GraphView() {
+  const fgRef = useRef<{ d3Force: (name: string, fn?: unknown) => unknown } | null>(null)
   const nodes = useFileTreeStore((s) => s.nodes)
   const fileList = useMemo(
     () => Object.values(nodes).filter((n) => n.type === 'file'),
@@ -81,9 +61,26 @@ export default function GraphView() {
     [graphData]
   )
 
+  // 力导向图参数：连线稍长、拖动时少干扰其他节点、默认节点间距不要太远
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const fg = fgRef.current
+      if (!fg?.d3Force) return
+      const linkForce = fg.d3Force('link') as { distance: (v: number) => void; strength: (v: number) => void } | undefined
+      const chargeForce = fg.d3Force('charge') as { strength: (v: number) => void } | undefined
+      if (linkForce) {
+        linkForce.distance(72)
+        linkForce.strength(0.35)
+      }
+      if (chargeForce) chargeForce.strength(-14)
+    }, 0)
+    return () => clearTimeout(id)
+  }, [])
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ForceGraph2D
+        ref={fgRef}
         graphData={fgData}
         nodeLabel="name"
         onNodeDragEnd={handleNodeDragEnd}

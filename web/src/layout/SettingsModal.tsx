@@ -15,9 +15,7 @@ import { useEffect, useState } from "react";
 import { useSettingsStore } from "../store/settings";
 import { fetchSettings, updateSettings } from "../api/settings";
 
-type SettingsModalProps = Pick<ModalProps, "open" | "onClose"> & {
-  onClose?: () => void;
-};
+type SettingsModalProps = Pick<ModalProps, "open"> & { onClose?: () => void };
 
 export default function SettingsModal({ open, onClose }: SettingsModalProps) {
   const {

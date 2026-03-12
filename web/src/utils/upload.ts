@@ -1,19 +1,21 @@
-let _uploadLimitBytes: number | null = null
+let _uploadLimitBytes: number | undefined
 
 export async function getUploadLimitBytes(): Promise<number> {
-  if (_uploadLimitBytes !== null) return _uploadLimitBytes
+  if (_uploadLimitBytes !== undefined) return _uploadLimitBytes
   try {
     const res = await fetch('/api/config/upload-limit')
     if (res.ok) {
       const data = await res.json()
-      _uploadLimitBytes = data.bytes ?? 10 * 1024 * 1024
-      return _uploadLimitBytes
+      const bytes = (data.bytes as number | undefined) ?? 10 * 1024 * 1024
+      _uploadLimitBytes = bytes
+      return bytes
     }
   } catch {
     /* fallback */
   }
-  _uploadLimitBytes = 10 * 1024 * 1024
-  return _uploadLimitBytes
+  const fallback = 10 * 1024 * 1024
+  _uploadLimitBytes = fallback
+  return fallback
 }
 
 export function formatBytes(bytes: number): string {

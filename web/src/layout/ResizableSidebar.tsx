@@ -16,10 +16,6 @@ const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 400;
 const SIDEBAR_DEFAULT = 210;
 
-function generateId(): string {
-  return `n_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
-
 type ResizableSidebarProps = {
   width: number;
   onWidthChange: (w: number) => void;

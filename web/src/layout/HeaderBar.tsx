@@ -232,7 +232,12 @@ export default function HeaderBar({ onToggleAI, aiOpen }: HeaderBarProps) {
         </Tooltip>
         <Dropdown
           menu={{
-            items: userMenuItems.filter((item) => !["status", "ai"].includes(item.key)),
+            items: userMenuItems.filter(
+              (item): item is NonNullable<(typeof userMenuItems)[number]> => {
+                if (!item || typeof item.key !== "string") return false;
+                return !["status", "ai"].includes(item.key);
+              }
+            ),
           }}
           placement="bottomRight"
           trigger={["click"]}

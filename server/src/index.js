@@ -32,8 +32,6 @@ app.use(
   }),
 )
 
-const staticRoot = path.resolve(__dirname, '../../web/dist')
-
 app.get('/api/health', (_, res) => {
   res.json({ ok: true })
 })
@@ -56,14 +54,7 @@ app.use('/api/settings', requireAuth, settingsRouter)
 
 attachCliWebSocket(server)
 
-app.use(express.static(staticRoot))
-
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/ws')) {
-    return res.status(404).end()
-  }
-  res.sendFile(path.join(staticRoot, 'index.html'))
-})
+app.use((req, res) => res.status(404).send('Not Found'))
 
 server.listen(PORT, async () => {
   console.log(`Server running at http://localhost:${PORT}`)

@@ -20,10 +20,9 @@ services:
     environment:
       - PORT=3001
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
       - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       - CHROMA_URL=http://chroma:8000
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SQLITE_PATH=/data/app.db
     depends_on:
       - chroma

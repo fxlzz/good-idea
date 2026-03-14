@@ -19,7 +19,11 @@ export function getDb() {
   ensureDir(DEFAULT_DB_PATH)
   db = new Database(DEFAULT_DB_PATH)
 
-  db.pragma('journal_mode = WAL')
+  // WAL 在 Docker 绑定挂载或网络盘上容易触发 disk I/O error，改用 DELETE
+  const journalMode =
+    process.env.SQLITE_JOURNAL_MODE ||
+    (DEFAULT_DB_PATH.startsWith('/data') ? 'DELETE' : 'WAL')
+  db.pragma(`journal_mode = ${journalMode}`)
 
   const fileColumns = db.prepare('PRAGMA table_info(files)').all()
   const hasLegacyFilesSchema =

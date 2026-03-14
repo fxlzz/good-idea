@@ -2,7 +2,8 @@ services:
   chroma:
     image: chromadb/chroma:latest
     ports:
-      - "8000:8000"
+      # 本地临时测试
+      - "8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
     environment:
@@ -14,16 +15,18 @@ services:
       context: .
       dockerfile: server/Dockerfile
     ports:
-      - "3001:3001"
+      - "3000:3001"
     volumes:
-      - server_data:/data
+      - ./server/data:/data
     environment:
       - PORT=3001
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
+      - JSON_BODY_LIMIT=${JSON_BODY_LIMIT:-10mb}
       - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
       - CHROMA_URL=http://chroma:8000
       - SQLITE_PATH=/data/app.db
+      - SQLITE_JOURNAL_MODE=DELETE
     depends_on:
       - chroma
     restart: unless-stopped

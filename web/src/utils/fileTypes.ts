@@ -1,5 +1,5 @@
 /** 系统支持的文件扩展名 */
-export const ALLOWED_FILE_EXTENSIONS = [".md", ".pdf", ".xlsx", ".docx", ".txt"] as const;
+export const ALLOWED_FILE_EXTENSIONS = [".md", ".pdf", ".xlsx", ".docx", ".doc", ".txt"] as const;
 
 export function getExtension(name: string): string {
   if (!name || !name.includes(".")) return "";

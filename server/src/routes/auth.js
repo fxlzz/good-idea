@@ -22,6 +22,7 @@ function isUniqueConstraintError(message) {
   )
 }
 
+// 客户端传入的 password 为明文经 MD5 后的字符串；
 router.post('/login', async (req, res) => {
   const username = normalizeUsername(req.body?.username)
   const password = String(req.body?.password || '')
@@ -48,7 +49,11 @@ router.post('/login', async (req, res) => {
       }
     } else {
       const ok = await bcrypt.compare(password, existing.password_hash)
-      if (!ok) return res.status(401).json({ error: 'invalid credentials' })
+      if (!ok) {
+        return res.status(401).json({
+          error: '用户名或密码错误。若为升级前注册的账号，请删除 server/data 下的数据库文件后重新注册。',
+        })
+      }
       user = existing
     }
 

@@ -1,6 +1,7 @@
 import { Button, Form, Input, message } from 'antd'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import md5 from 'md5'
 import { useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import { clearFileTreePersistence } from '../store/fileTree'
 
@@ -21,10 +22,11 @@ export default function LoginPage() {
 
     setSubmitting(true)
     try {
+      const passwordHash = md5(password)
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password: passwordHash }),
       })
       const data = await res.json().catch(() => null)
       if (!res.ok) {

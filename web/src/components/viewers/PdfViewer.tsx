@@ -32,7 +32,18 @@ export default function PdfViewer({ content }: PdfViewerProps) {
   if (!src) return <div style={{ padding: 24, color: '#999' }}>暂无 PDF 内容</div>
 
   return (
-    <div style={{ padding: 24, overflow: 'auto' }}>
+    <div
+      style={{
+        padding: 24,
+        overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: '100%',
+        minHeight: '100%',
+        boxSizing: 'border-box',
+      }}
+    >
       <Document
         file={src}
         onLoadSuccess={({ numPages }) => setNumPages(numPages)}

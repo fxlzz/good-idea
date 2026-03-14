@@ -1,6 +1,10 @@
 :root {
   /* 内容区背景 */
   --ide-bg: #0f0f1a;
+  /* 内容区抬升背景（如表格容器） */
+  --ide-bg-elevated: #16161f;
+  /* 表格斑马纹 */
+  --ide-stripe: rgba(255, 255, 255, 0.04);
   /* 顶部菜单栏、侧边栏 */
   --ide-header: #0d0d18;
   --ide-sidebar: #0d0d18;
@@ -21,10 +25,12 @@
 
 :root[data-theme='light'] {
   --ide-bg: #f0f2f5;
+  --ide-bg-elevated: #ffffff;
+  --ide-stripe: rgba(0, 0, 0, 0.03);
   --ide-header: #ffffff;
   --ide-sidebar: #ffffff;
   --ide-tree-bg: #ffffff;
-  --ide-sidebar-border: #f0f0f0;
+  --ide-sidebar-border: #e8e8e8;
   --ide-panel: #ffffff;
   --ide-tab-bg: #fafafa;
   --ide-tab-active: #1677ff;
